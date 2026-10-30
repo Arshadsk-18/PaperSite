@@ -409,15 +409,27 @@ async function main() {
     await publishModal.waitFor({ state: 'visible', timeout: 15000 });
     console.log('Publish modal is open with QR Code and URL.');
 
-    // Extract published slug / URL
-    let publishedSlug = 'brew-bay';
-    try {
-      const modalText = await publishModal.innerText();
-      const match = modalText.match(/\/site\/([a-zA-Z0-9_-]+)/);
+    // Extract published slug / URL directly from the Open Published Site link
+    let publishedSlug = '';
+    const openSiteLink = publishModal.locator('a:has-text("Open published site")').first();
+    if (await openSiteLink.isVisible().catch(() => false)) {
+      const href = await openSiteLink.getAttribute('href');
+      console.log(`Found Open published site href: ${href}`);
+      if (href) {
+        const parts = href.split('/site/');
+        if (parts[1]) {
+          publishedSlug = parts[1].trim();
+        }
+      }
+    }
+    if (!publishedSlug) {
+      const urlText = await page.locator('[data-testid="published-site-url"]').textContent();
+      const match = (urlText || '').match(/\/site\/([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
         publishedSlug = match[1].trim();
       }
-    } catch {}
+    }
+    if (!publishedSlug) publishedSlug = 'brew-bay';
     console.log(`Resolved published slug: ${publishedSlug}`);
 
     // Keep dialog visible for at least 3-4 seconds as requested
