@@ -14,6 +14,7 @@ export const SAMPLE_LAYOUT: SiteLayout = sampleLayoutJson as unknown as SiteLayo
 
 export interface BuildSampleOptions {
   businessName?: string | null;
+  businessType?: string | null;
   language?: SupportedLanguage | null;
   whatsappNumber?: string | null;
   projectId?: string | null;
@@ -21,16 +22,183 @@ export interface BuildSampleOptions {
   openingHours?: any[] | null;
 }
 
+// Category-specific fallback layout templates
+export function getCategorySampleLayout(businessType?: string | null, businessName?: string | null): SiteLayout {
+  const type = (businessType || 'cafe').toLowerCase();
+  const name = businessName || (type === 'restaurant' ? 'Spice Route Bistro' : type === 'shop' || type === 'clothing' ? 'Aura Boutique' : type === 'salon' ? 'Luxe Salon & Spa' : 'Brew Bay Café');
+
+  if (type.includes('restaurant') || type.includes('bistro') || type.includes('dine') || type.includes('food')) {
+    return {
+      theme: {
+        primary: '#b91c1c',
+        font: 'Outfit',
+        businessName: name,
+      },
+      sections: [
+        { id: 'header-1', type: 'header' },
+        {
+          id: 'hero-1',
+          type: 'hero',
+          title: name,
+          subtitle: 'Authentic Regional Delicacies & Fine Dining Experience',
+          content: 'Savor masterfully crafted culinary wonders prepared with organic local ingredients.',
+        },
+        {
+          id: 'menu-1',
+          type: 'menu',
+          title: 'Signature Dining Menu',
+          subtitle: 'Curated seasonal tasting dishes and chef specialties',
+          items: [
+            { name: 'Dum Pukht Biryani', description: 'Slow-cooked fragrant basmati with royal whole spices', price: '₹420' },
+            { name: 'Paneer Makhani Platter', description: 'Charred cottage cheese in creamy velvet tomato gravy', price: '₹340' },
+            { name: 'Tandoori Smoked Platter', description: 'Marinated in Kashmiri chili, yogurt and roasted cumin', price: '₹390' },
+            { name: 'Saffron Pistachio Kulfi', description: 'Traditional slow-reduced milk infused with saffron', price: '₹180' },
+          ],
+        },
+        {
+          id: 'hours-1',
+          type: 'hours',
+          title: 'Dining Hours',
+          hours: [
+            { day: 'Lunch', open: '12:00', close: '15:30' },
+            { day: 'Dinner', open: '19:00', close: '23:30' },
+          ],
+        },
+        {
+          id: 'booking-1',
+          type: 'booking',
+          title: 'Reserve a Dining Table',
+          subtitle: 'Reserve your dining table online. Instant confirmation via WhatsApp.',
+        },
+        {
+          id: 'contact-1',
+          type: 'contact',
+          title: 'Location & Reservations',
+          content: '42 Heritage Enclave, MG Road, Bengaluru, Karnataka 560001',
+        },
+        { id: 'footer-1', type: 'footer' },
+      ],
+    };
+  }
+
+  if (type.includes('cloth') || type.includes('shop') || type.includes('boutique') || type.includes('apparel') || type.includes('fashion') || type.includes('store')) {
+    return {
+      theme: {
+        primary: '#4338ca',
+        font: 'Inter',
+        businessName: name,
+      },
+      sections: [
+        { id: 'header-1', type: 'header' },
+        {
+          id: 'hero-1',
+          type: 'hero',
+          title: name,
+          subtitle: 'Contemporary Fashion, Handloom Silks & Bespoke Tailoring',
+          content: 'Discover handpicked sustainable garments crafted by master artisans.',
+        },
+        {
+          id: 'services-1',
+          type: 'services',
+          title: 'Featured Collection & Catalog',
+          subtitle: 'New arrivals in contemporary ethnic & modern casual wear',
+          items: [
+            { name: 'Hand-block Printed Linen Shirt', description: '100% pure breathable organic linen', price: '₹1,450' },
+            { name: 'Chanderi Silk Festive Kurta', description: 'Hand-woven with delicate zari border detailing', price: '₹2,890' },
+            { name: 'Custom Fit Tailoring Session', description: 'Personalized measurements and designer consultation', price: '₹600' },
+            { name: 'Signature Brass Accent Dupatta', description: 'Artisan hand-dyed natural indigo finish', price: '₹1,200' },
+          ],
+        },
+        {
+          id: 'hours-1',
+          type: 'hours',
+          title: 'Boutique Store Hours',
+          hours: [
+            { day: 'Monday - Saturday', open: '10:30', close: '21:00' },
+            { day: 'Sunday', open: '11:00', close: '20:00' },
+          ],
+        },
+        {
+          id: 'booking-1',
+          type: 'booking',
+          title: 'Book a Personal Styling Trial',
+          subtitle: 'Reserve our private fitting room and complimentary personal stylist.',
+        },
+        {
+          id: 'contact-1',
+          type: 'contact',
+          title: 'Visit Our Boutique',
+          content: 'Plot 18, Commercial Row, Jubilee Hills, Hyderabad, Telangana 500033',
+        },
+        { id: 'footer-1', type: 'footer' },
+      ],
+    };
+  }
+
+  if (type.includes('salon') || type.includes('spa') || type.includes('beauty') || type.includes('hair')) {
+    return {
+      theme: {
+        primary: '#be185d',
+        font: 'Plus Jakarta Sans',
+        businessName: name,
+      },
+      sections: [
+        { id: 'header-1', type: 'header' },
+        {
+          id: 'hero-1',
+          type: 'hero',
+          title: name,
+          subtitle: 'Premium Hair Care, Luxury Facials & Wellness Spa',
+          content: 'Rejuvenate your senses with bespoke luxury beauty therapies.',
+        },
+        {
+          id: 'services-1',
+          type: 'services',
+          title: 'Salon & Spa Services',
+          subtitle: 'Individual care designed by experienced senior stylists',
+          items: [
+            { name: 'Creative Haircut & Blowdry', description: 'Personalized styling consultation and wash', price: '₹850' },
+            { name: 'Botanical Hair Spa Ritual', description: 'Deep conditioning scalp nourishment treatment', price: '₹1,500' },
+            { name: 'Radiance Glow Facial', description: 'Hydrating collagen treatment with organic serums', price: '₹2,200' },
+            { name: 'Aroma Relaxation Massage', description: '60 minutes soothing essential oil therapy', price: '₹2,800' },
+          ],
+        },
+        {
+          id: 'hours-1',
+          type: 'hours',
+          title: 'Salon Hours',
+          hours: [
+            { day: 'Tuesday - Sunday', open: '09:30', close: '20:30' },
+            { day: 'Monday', open: 'Closed', close: 'Closed' },
+          ],
+        },
+        {
+          id: 'booking-1',
+          type: 'booking',
+          title: 'Book an Appointment',
+          subtitle: 'Schedule your haircut or spa session. We confirm immediately on WhatsApp.',
+        },
+        {
+          id: 'contact-1',
+          type: 'contact',
+          title: 'Studio Location',
+          content: 'Suite 201, Crystal Plaza, Indiranagar, Bengaluru, Karnataka 560038',
+        },
+        { id: 'footer-1', type: 'footer' },
+      ],
+    };
+  }
+
+  // Default to Cafe
+  const cafeLayout: SiteLayout = JSON.parse(JSON.stringify(SAMPLE_LAYOUT));
+  cafeLayout.theme.businessName = name;
+  if (cafeLayout.sections[1]) cafeLayout.sections[1].title = name;
+  return cafeLayout;
+}
+
 // Builds the sample page HTML using renderSite so it strictly matches real output
 export function buildSamplePage(options: BuildSampleOptions = {}): { layout: SiteLayout; html: string } {
-  const layout: SiteLayout = JSON.parse(JSON.stringify(SAMPLE_LAYOUT));
-
-  if (options.businessName) {
-    layout.theme.businessName = options.businessName;
-    if (layout.sections[1]) {
-      layout.sections[1].title = options.businessName;
-    }
-  }
+  const layout = getCategorySampleLayout(options.businessType, options.businessName);
 
   const lang = (options.language || 'en') as 'en' | 'te' | 'hi';
   const whatsapp = options.whatsappNumber || '+919876543210';

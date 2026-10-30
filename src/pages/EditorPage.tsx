@@ -113,6 +113,7 @@ export const EditorPage: React.FC = () => {
 
   // Demo Safety State
   const [usingSavedExample, setUsingSavedExample] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const [cacheNotice, setCacheNotice] = useState<string | null>(null);
   const [isDemoTipsOpen, setIsDemoTipsOpen] = useState(false);
 
@@ -354,6 +355,7 @@ export const EditorPage: React.FC = () => {
     if (!project) return;
     setIsGenerating(true);
     setErrorMessage(null);
+    setFallbackReason(null);
     setGenerationStep('Reading your sketch');
 
     try {
@@ -368,11 +370,14 @@ export const EditorPage: React.FC = () => {
       }
 
       // 1. Instant Sketch Cache Lookup (0 tokens, instant response)
-      const sketchHash = await hashSketch(imageBase64);
+      // Hash is namespaced by business_type so different types never collide
+      const sketchHash = await hashSketch(imageBase64, project.business_type);
       const cached = getCachedSketchResult(sketchHash);
-      if (cached) {
+      if (cached && cached.isAiGenerated !== false) {
         setCacheNotice('Instant sketch cache hit — 0 tokens used.');
         setTimeout(() => setCacheNotice(null), 4000);
+        setUsingSavedExample(false);
+        setFallbackReason(null);
         await saveAndRenderVersion(cached.layout, imageBase64, cached.html);
         setMobileTab('preview');
         setInstructionText('');
@@ -384,6 +389,7 @@ export const EditorPage: React.FC = () => {
       // 2. Try Edge Function / AI Vision Generation
       let layout: SiteLayout | null = null;
       let html: string = '';
+      let isAiGenerated = false;
 
       if (isSupabaseConfigured && navigator.onLine) {
         try {
@@ -395,6 +401,7 @@ export const EditorPage: React.FC = () => {
             voiceText: instructionText,
           });
           layout = res.layout;
+          isAiGenerated = true;
 
           try {
             const htmlRes = await api.layoutToHtml({
@@ -410,17 +417,30 @@ export const EditorPage: React.FC = () => {
           }
 
           setUsingSavedExample(false);
+          setFallbackReason(null);
         } catch (edgeErr: any) {
           console.warn('Edge Function or Gemini free-tier error:', edgeErr);
           layout = null;
+          isAiGenerated = false;
+          if (edgeErr.code === 'GEMINI_RATE_LIMITED' || edgeErr.status === 429) {
+            setFallbackReason('Gemini free-tier quota rate limit reached (HTTP 429). Loaded customized layout.');
+          } else if (edgeErr.code === 'GEMINI_NOT_CONFIGURED') {
+            setFallbackReason('Gemini API key is not configured in Supabase. Loaded customized layout.');
+          } else {
+            setFallbackReason(`AI generation unavailable (${edgeErr.message || 'Network error'}). Loaded customized layout.`);
+          }
         }
       }
 
-      // 3. Fallback: If Edge Function failed, rate limited (429), or offline: load Brew Bay sample
+      // 3. Fallback: If Edge Function failed, rate limited (429), or offline: load category-tailored sample
       if (!layout) {
         setUsingSavedExample(true);
+        if (!fallbackReason) {
+          setFallbackReason(navigator.onLine ? 'AI generation service unavailable. Loaded customized layout.' : 'Offline mode active. Loaded customized layout.');
+        }
         const sample = buildSamplePage({
-          businessName: project.business_name || 'Brew Bay Café',
+          businessName: project.business_name,
+          businessType: project.business_type,
           language: project.language,
           whatsappNumber: project.whatsapp_number,
           projectId: project.id,
@@ -430,8 +450,10 @@ export const EditorPage: React.FC = () => {
         html = sample.html;
       }
 
-      // 4. Cache and commit version
-      setCachedSketchResult(sketchHash, layout, html);
+      // 4. Cache and commit version: ONLY cache if genuinely AI generated!
+      if (isAiGenerated && layout) {
+        setCachedSketchResult(sketchHash, layout, html, project.business_type, true);
+      }
       await saveAndRenderVersion(layout, imageBase64, html);
 
       setMobileTab('preview');
@@ -439,8 +461,10 @@ export const EditorPage: React.FC = () => {
     } catch (err: any) {
       console.error('Generation error, activating demo safety:', err);
       setUsingSavedExample(true);
+      setFallbackReason(`Generation error: ${err.message || 'Demo fallback activated'}`);
       const sample = buildSamplePage({
-        businessName: project.business_name || 'Brew Bay Café',
+        businessName: project.business_name,
+        businessType: project.business_type,
         language: project.language,
         whatsappNumber: project.whatsapp_number,
         projectId: project.id,
@@ -533,6 +557,16 @@ export const EditorPage: React.FC = () => {
     setErrorMessage(null);
 
     try {
+      // 1. Ensure a version exists and is linked
+      if (!currentLayout || !currentHtml) {
+        throw new Error('Please generate your website before publishing.');
+      }
+
+      if (!project.current_version_id && currentLayout) {
+        // Save current version first
+        await saveAndRenderVersion(currentLayout, '', currentHtml);
+      }
+
       const slug = project.slug;
       setPublishedSlug(slug);
 
@@ -818,15 +852,15 @@ export const EditorPage: React.FC = () => {
       {usingSavedExample && (
         <div
           role="alert"
-          className="px-4 py-2.5 bg-[#D6F26B]/20 border-b border-[#2F6B4F]/30 flex items-center justify-between gap-3 text-xs sm:text-sm text-[#14221B] animate-in fade-in"
+          className="px-4 py-2.5 bg-[#FEF3C7] border-b border-[#F59E0B]/30 flex items-center justify-between gap-3 text-xs sm:text-sm text-[#92400E] animate-in fade-in"
         >
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-full bg-[#1F3D33] text-[#D6F26B] text-[10px] font-bold uppercase tracking-wide">
+            <span className="px-2 py-0.5 rounded-full bg-[#B45309] text-white text-[10px] font-bold uppercase tracking-wide">
               Saved Example
             </span>
-            <span className="font-bold text-[#14221B]">Using a saved example</span>
-            <span className="hidden sm:inline text-[#5E6B63]">
-              — Wi-Fi was unavailable or Gemini free-tier rate limit was reached. Loaded Brew Bay Café sample.
+            <span className="font-bold text-[#92400E]">Using a saved example</span>
+            <span className="hidden sm:inline text-[#78350F]">
+              — {fallbackReason || `Loaded tailored ${project?.business_type || 'shop'} layout template.`}
             </span>
           </div>
           <button
@@ -912,7 +946,10 @@ export const EditorPage: React.FC = () => {
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) handleGenerate(file);
+                  if (file) {
+                    handleGenerate(file);
+                  }
+                  e.target.value = '';
                 }}
               />
               <button
