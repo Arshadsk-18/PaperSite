@@ -441,29 +441,23 @@ async function main() {
     currentStep = 9;
     logStepStart(9, 'Customer Appointment Booking on Storefront');
 
-    // Tab 1 navigates client-side to Dashboard and then to Live Bookings
-    console.log('Tab 1 navigating client-side to /dashboard...');
-    const dashboardNavBtn = page.locator('nav a[href="/dashboard"], a:has-text("Dashboard")').first();
-    if (await dashboardNavBtn.isVisible().catch(() => false)) {
-      await dashboardNavBtn.click({ force: true });
+    // Tab 1 navigates to Dashboard and then to Live Bookings
+    console.log('Tab 1 navigating to /dashboard...');
+    const backToDashBtn = page.locator('a[title="Back to dashboard"], a[href="/dashboard"], nav a[href="/dashboard"]').first();
+    if (await backToDashBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await backToDashBtn.click({ force: true });
     } else {
-      await page.evaluate(() => {
-        window.history.pushState({}, '', '/dashboard');
-        window.dispatchEvent(new PopStateEvent('popstate'));
-      });
+      await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     }
-    await page.waitForURL('**/dashboard**', { timeout: 15000 });
+    await page.waitForURL('**/dashboard**', { timeout: 15000 }).catch(() => {});
     await pause(1500);
 
-    console.log('Tab 1 clicking Live Bookings...');
+    console.log('Tab 1 opening Live Bookings page...');
     const liveBookingsBtn = page.locator('a[href="/bookings"], button:has-text("Live bookings")').first();
-    if (await liveBookingsBtn.isVisible().catch(() => false)) {
+    if (await liveBookingsBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await liveBookingsBtn.click({ force: true });
     } else {
-      await page.evaluate(() => {
-        window.history.pushState({}, '', '/bookings');
-        window.dispatchEvent(new PopStateEvent('popstate'));
-      });
+      await page.goto(`${BASE_URL}/bookings`, { waitUntil: 'networkidle' });
     }
     await page.waitForSelector('h1:has-text("Bookings"), [data-testid="live-indicator"]', { timeout: 15000 });
     await pause(2000);
@@ -471,11 +465,15 @@ async function main() {
     // Tab 2 opens published storefront in a new tab
     console.log(`Tab 2 opening storefront for slug "${publishedSlug}"...`);
     const page2 = await context.newPage();
-    await page2.goto(`${BASE_URL}/`, { waitUntil: 'networkidle', timeout: 30000 });
-    await page2.evaluate((slug) => {
-      window.history.pushState({}, '', `/site/${slug}`);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    }, publishedSlug);
+    try {
+      await page2.goto(`${BASE_URL}/site/${publishedSlug}`, { waitUntil: 'networkidle', timeout: 30000 });
+    } catch {
+      await page2.goto(`${BASE_URL}/`, { waitUntil: 'networkidle', timeout: 30000 });
+      await page2.evaluate((slug) => {
+        window.history.pushState({}, '', `/site/${slug}`);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }, publishedSlug);
+    }
 
     // Wait for the storefront iframe to mount and load
     console.log('Waiting for storefront iframe to load...');
