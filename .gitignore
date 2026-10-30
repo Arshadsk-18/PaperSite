@@ -15,6 +15,9 @@ dist-ssr
 .env.local
 supabase/.env
 supabase/.temp/
+.env.demo
+demo-videos/
+
 
 # Editor directories and files
 .vscode/*

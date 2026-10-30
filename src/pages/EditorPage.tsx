@@ -780,6 +780,7 @@ export const EditorPage: React.FC = () => {
           <Button
             variant="accent"
             size="sm"
+            data-testid="generate-btn"
             onClick={() => handleGenerate()}
             isLoading={isGenerating}
             icon={<Sparkles className="w-4 h-4" />}
@@ -792,6 +793,7 @@ export const EditorPage: React.FC = () => {
           <Button
             variant="primary"
             size="sm"
+            data-testid="publish-btn"
             onClick={handlePublish}
             isLoading={isPublishing}
             icon={<Share2 className="w-4 h-4" />}
@@ -997,6 +999,7 @@ export const EditorPage: React.FC = () => {
               >
                 <iframe
                   title="Sandboxed Site Preview"
+                  data-testid="preview-iframe"
                   sandbox="allow-scripts allow-forms"
                   srcDoc={getInspectedSrcDoc()}
                   className="w-full h-full border-0"
@@ -1040,6 +1043,7 @@ export const EditorPage: React.FC = () => {
             <div className="flex-1 relative">
               <input
                 type="text"
+                data-testid="instruction-input"
                 value={instructionText}
                 onChange={(e) => setInstructionText(e.target.value)}
                 onKeyDown={(e) => {
@@ -1058,6 +1062,7 @@ export const EditorPage: React.FC = () => {
             <Button
               variant="primary"
               size="sm"
+              data-testid="apply-edit-btn"
               onClick={handleEditRegion}
               isLoading={isEditingRegion}
               disabled={!instructionText.trim()}
@@ -1073,6 +1078,7 @@ export const EditorPage: React.FC = () => {
         <div
           role="dialog"
           aria-modal="true"
+          data-testid="publish-modal"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
         >
           <div className="bg-white rounded-3xl border border-[#E3E8E4] shadow-2xl w-full max-w-md p-6 sm:p-8 animate-in fade-in zoom-in-95">
@@ -1083,6 +1089,7 @@ export const EditorPage: React.FC = () => {
               </div>
               <button
                 type="button"
+                data-testid="close-publish-modal-btn"
                 onClick={() => setIsPublishModalOpen(false)}
                 className="p-1 rounded-md text-[#5E6B63] hover:text-[#14221B]"
               >
@@ -1100,7 +1107,7 @@ export const EditorPage: React.FC = () => {
 
               {/* Public Link Box with Copy */}
               <div className="flex items-center gap-2 p-2 rounded-xl bg-[#F4F6F4] border border-[#E3E8E4] text-xs">
-                <span className="truncate flex-1 font-mono text-[#14221B] text-left pl-2">
+                <span data-testid="published-site-url" className="truncate flex-1 font-mono text-[#14221B] text-left pl-2">
                   {window.location.origin}/site/{publishedSlug}
                 </span>
                 <button

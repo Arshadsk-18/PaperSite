@@ -326,6 +326,7 @@ export const DashboardPage: React.FC = () => {
           <Button
             variant="accent"
             size="md"
+            data-testid="new-site-btn"
             icon={<Plus className="w-4 h-4" />}
             onClick={() => {
               setBusinessName('');
@@ -536,6 +537,7 @@ export const DashboardPage: React.FC = () => {
                 </label>
                 <input
                   id="business-name-input"
+                  data-testid="business-name-input"
                   type="text"
                   required
                   placeholder="e.g. Brew Bay Café"
@@ -555,6 +557,7 @@ export const DashboardPage: React.FC = () => {
                 </label>
                 <select
                   id="business-type-select"
+                  data-testid="business-type-select"
                   value={businessType}
                   onChange={(e) => setBusinessType(e.target.value)}
                   className="w-full px-3.5 py-2.5 min-h-[44px] text-sm rounded-lg border border-[#E3E8E4] bg-white focus:outline-none focus:ring-2 focus:ring-[#2F6B4F]"
@@ -578,6 +581,7 @@ export const DashboardPage: React.FC = () => {
                 </label>
                 <input
                   id="whatsapp-number-input"
+                  data-testid="whatsapp-number-input"
                   type="tel"
                   required
                   placeholder="e.g. +91 98765 43210"
@@ -611,6 +615,7 @@ export const DashboardPage: React.FC = () => {
                 <Button
                   type="submit"
                   variant="primary"
+                  data-testid="create-site-submit-btn"
                   isLoading={isSubmitting}
                 >
                   Create and open canvas

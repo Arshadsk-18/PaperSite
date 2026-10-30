@@ -308,7 +308,7 @@ export const BookingsPage: React.FC = () => {
               Bookings
             </h1>
             {/* Green Pulsing Live Indicator */}
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-bold shadow-2xs">
+            <span data-testid="live-indicator" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-bold shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-[#1F8A4C] animate-ping" />
               <span>Live</span>
             </span>
@@ -436,6 +436,7 @@ export const BookingsPage: React.FC = () => {
                 return (
                   <motion.div
                     key={b.id}
+                    data-testid="booking-row"
                     layout
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}

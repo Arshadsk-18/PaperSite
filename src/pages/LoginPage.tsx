@@ -249,6 +249,7 @@ export const LoginPage: React.FC = () => {
                 <input
                   id="email"
                   name="email"
+                  data-testid="login-email-input"
                   type="email"
                   autoComplete="email"
                   required
@@ -283,6 +284,7 @@ export const LoginPage: React.FC = () => {
                 <input
                   id="password"
                   name="password"
+                  data-testid="login-password-input"
                   type="password"
                   autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'}
                   required
@@ -305,6 +307,7 @@ export const LoginPage: React.FC = () => {
             {/* Submit Button */}
             <Button
               type="submit"
+              data-testid="login-submit-btn"
               variant="primary"
               size="md"
               isLoading={isLoading}
@@ -320,6 +323,7 @@ export const LoginPage: React.FC = () => {
             <div className="mt-5 pt-5 border-t border-[#E3E8E4]">
               <Button
                 type="button"
+                data-testid="continue-as-demo-btn"
                 variant="accent"
                 size="md"
                 onClick={handleContinueAsDemo}

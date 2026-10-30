@@ -38,6 +38,7 @@ export const LanguageChips: React.FC<LanguageChipsProps> = ({
           <button
             key={lang.code}
             type="button"
+            data-testid={`lang-chip-${lang.code}`}
             role="radio"
             aria-checked={isSelected}
             onClick={() => onChange(lang.code)}
