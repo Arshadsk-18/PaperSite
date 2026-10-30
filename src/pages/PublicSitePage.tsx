@@ -98,7 +98,7 @@ export const PublicSitePage: React.FC = () => {
             .eq('slug', slug)
             .single();
 
-          if (!error && data && data.html) {
+          if (!error && data && data.html && data.html.length > 100 && !data.html.startsWith('<!-- [DEMO]')) {
             setSiteHtml(data.html);
             setBusinessName(data.business_name || 'Shop');
             updateDocumentMetadata(data.business_name);
@@ -122,7 +122,7 @@ export const PublicSitePage: React.FC = () => {
             if (storedVers) {
               const vers = JSON.parse(storedVers);
               const activeVer = vers.find((v: any) => v.id === matched.current_version_id) || vers[0];
-              if (activeVer) {
+              if (activeVer && activeVer.html && activeVer.html.length > 100) {
                 setSiteHtml(activeVer.html);
                 setBusinessName(matched.business_name);
                 updateDocumentMetadata(matched.business_name);
@@ -137,7 +137,7 @@ export const PublicSitePage: React.FC = () => {
       }
 
       // Demo fallback for brew-bay
-      if (slug === 'brew-bay' || slug === 'demo') {
+      if (slug.includes('brew-bay') || slug === 'demo') {
         const demoHtml = sanitizeHtml(
           renderSite(BREW_BAY_LAYOUT, 'en', '+919876543210', {
             projectId: '11111111-1111-1111-1111-111111111111',
