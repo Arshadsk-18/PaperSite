@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #FFFFFF;
+  --color-surface: #F4F6F4;
+  --color-border: #E3E8E4;
+  --color-text: #14221B;
+  --color-muted: #5E6B63;
+  --color-forest: #1F3D33;
+  --color-green: #2F6B4F;
+  --color-lime: #D6F26B;
+  --color-danger: #C8382F;
+  --color-success: #1F8A4C;
+
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-telugu: "Noto Sans Telugu", system-ui, sans-serif;
+  --font-hindi: "Noto Sans Devanagari", system-ui, sans-serif;
+}
+
+:root {
+  --bg: #FFFFFF;
+  --surface: #F4F6F4;
+  --border: #E3E8E4;
+  --text: #14221B;
+  --muted: #5E6B63;
+  --forest: #1F3D33;
+  --green: #2F6B4F;
+  --lime: #D6F26B;
+  --danger: #C8382F;
+  --success: #1F8A4C;
+
+  font-family: var(--font-sans);
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #FFFFFF;
+  color: #14221B;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Global focus ring utility for accessibility */
+*:focus-visible {
+  outline: 2px solid #1F3D33;
+  outline-offset: 2px;
+}
+
+/* Disable all animations and smooth scrolling when user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

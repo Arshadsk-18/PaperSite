@@ -1,0 +1,25 @@
+{
+  "sectionId": "hero-1",
+  "instructionText": "Change the subtitle to 'Finest handcrafted roasts & organic pastries in town'",
+  "currentLayoutJson": {
+    "theme": {
+      "primary": "#d97706",
+      "font": "Inter",
+      "businessName": "Brew Bay Café"
+    },
+    "sections": [
+      {
+        "id": "hero-1",
+        "type": "hero",
+        "title": "Brew Bay Café",
+        "subtitle": "Artisanal Coffee & Fresh Pastries",
+        "content": "Crafted with single-origin beans."
+      },
+      {
+        "id": "booking-1",
+        "type": "booking",
+        "title": "Reserve a Table"
+      }
+    ]
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "theme": {
+    "primary": "#2F6B4F",
+    "font": "Plus Jakarta Sans",
+    "businessName": "Brew Bay Café"
+  },
+  "sections": [
+    {
+      "id": "header-1",
+      "type": "header"
+    },
+    {
+      "id": "hero-1",
+      "type": "hero",
+      "title": "Brew Bay Café",
+      "subtitle": "Artisanal Roasts, Fresh Sourdough & Cozy Coastal Vibes",
+      "content": "Hand-crafted single-origin coffee and freshly baked morning goods in Bandra."
+    },
+    {
+      "id": "menu-1",
+      "type": "menu",
+      "title": "Signature Coffee & Bakes",
+      "subtitle": "Freshly brewed using specialty beans from Chikmagalur estates",
+      "items": [
+        {
+          "name": "Signature Cold Brew",
+          "description": "18-hour slow steep with dark chocolate and citrus notes",
+          "price": "₹220"
+        },
+        {
+          "name": "Classic Flat White",
+          "description": "Silky micro-foam over a rich double ristretto",
+          "price": "₹190"
+        },
+        {
+          "name": "Almond Frangipane Croissant",
+          "description": "Twice baked with cultured butter and roasted almonds",
+          "price": "₹160"
+        },
+        {
+          "name": "Avocado & Feta Sourdough",
+          "description": "Hass avocado, crumbled feta, chili flakes on artisan sourdough",
+          "price": "₹260"
+        }
+      ]
+    },
+    {
+      "id": "services-1",
+      "type": "services",
+      "title": "Experiences & Services",
+      "subtitle": "Curated coffee tasting and private booth bookings",
+      "items": [
+        {
+          "name": "Coffee Cupping Workshop",
+          "description": "60-minute interactive session exploring 4 distinct origins",
+          "price": "₹850"
+        },
+        {
+          "name": "Reserved Workspace Booth",
+          "description": "High-speed Wi-Fi, power outlets, and pour-over coffee for 2 hours",
+          "price": "₹450"
+        },
+        {
+          "name": "Mobile Espresso Bar Catering",
+          "description": "Full barista bar setup for private events and gatherings",
+          "price": "₹4,500"
+        }
+      ]
+    },
+    {
+      "id": "hours-1",
+      "type": "hours",
+      "title": "Opening Hours",
+      "hours": [
+        { "day": "Monday - Friday", "open": "08:00", "close": "22:00" },
+        { "day": "Saturday - Sunday", "open": "09:00", "close": "23:00" }
+      ]
+    },
+    {
+      "id": "booking-1",
+      "type": "booking",
+      "title": "Reserve a Table",
+      "subtitle": "Book your table or experience online. We will confirm via WhatsApp."
+    },
+    {
+      "id": "contact-1",
+      "type": "contact",
+      "title": "Visit Us in Bandra",
+      "content": "Shop 4, Promenade Walk, Bandra West, Mumbai, Maharashtra 400050"
+    },
+    {
+      "id": "footer-1",
+      "type": "footer"
+    }
+  ]
+}

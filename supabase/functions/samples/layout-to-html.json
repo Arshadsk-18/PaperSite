@@ -1,0 +1,54 @@
+{
+  "projectId": "11111111-1111-1111-1111-111111111111",
+  "language": "en",
+  "whatsappNumber": "+919876543210",
+  "address": "Shop 4, Promenade Walk, Bandra West, Mumbai",
+  "openingHours": [
+    { "day": "Monday", "open": "08:00", "close": "21:00" },
+    { "day": "Tuesday", "open": "08:00", "close": "21:00" },
+    { "day": "Wednesday", "open": "08:00", "close": "21:00" }
+  ],
+  "layoutJson": {
+    "theme": {
+      "primary": "#d97706",
+      "font": "Inter",
+      "businessName": "Brew Bay Café"
+    },
+    "sections": [
+      {
+        "id": "header-1",
+        "type": "header"
+      },
+      {
+        "id": "hero-1",
+        "type": "hero",
+        "title": "Brew Bay Café",
+        "subtitle": "Artisanal Coffee & Fresh Sourdough Pastries",
+        "content": "Crafted with single-origin beans."
+      },
+      {
+        "id": "menu-1",
+        "type": "menu",
+        "title": "Popular Brews",
+        "items": [
+          { "name": "Signature Cold Brew", "description": "18h steeped", "price": "₹220" },
+          { "name": "Classic Flat White", "description": "Double ristretto", "price": "₹190" }
+        ]
+      },
+      {
+        "id": "hours-1",
+        "type": "hours",
+        "title": "Operating Hours"
+      },
+      {
+        "id": "booking-1",
+        "type": "booking",
+        "title": "Reserve a Table"
+      },
+      {
+        "id": "footer-1",
+        "type": "footer"
+      }
+    ]
+  }
+}

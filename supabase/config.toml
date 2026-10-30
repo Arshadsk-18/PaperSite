@@ -1,0 +1,26 @@
+# ==============================================================================
+# PaperSite: Supabase Configuration
+# File: supabase/config.toml
+# JWT verification is enabled on all functions except public submit-booking.
+# ==============================================================================
+
+project_id = "papersite"
+
+[functions.sketch-to-layout]
+verify_jwt = true
+
+[functions.layout-to-html]
+verify_jwt = true
+
+[functions.edit-region]
+verify_jwt = true
+
+[functions.publish-site]
+verify_jwt = true
+
+[functions.unpublish-site]
+verify_jwt = true
+
+# Public customer booking submission allows guest/unauthenticated calls
+[functions.submit-booking]
+verify_jwt = false
