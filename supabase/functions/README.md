@@ -7,15 +7,19 @@ All server-side logic, AI interactions, and protected database mutations run ins
 Set the following secrets in your Supabase project before deployment:
 
 ```bash
-# Set Gemini API Key (from Google AI Studio: aistudio.google.com)
-supabase secrets set GEMINI_API_KEY="your-gemini-api-key"
-
-# Set Gemini Model
-supabase secrets set GEMINI_MODEL="gemini-1.5-flash"
+# Set OpenRouter API Key (from openrouter.ai)
+# Exclusively targets the free model: nvidia/nemotron-3.5-super-vl:free
+supabase secrets set OPENROUTER_API_KEY="your-openrouter-api-key"
 
 # Set Supabase Service Role Key (from Supabase Dashboard -> Project Settings -> API)
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+
+# [INACTIVE - Retained for manual rollback only; no active flow calls Gemini]
+# supabase secrets set GEMINI_API_KEY="your-gemini-api-key"
+# supabase secrets set GEMINI_MODEL="gemini-1.5-flash"
 ```
+
+> **Note on Free AI Availability:** The application strictly uses `nvidia/nemotron-3.5-super-vl:free` with zero paid usage and zero paid fallbacks. Free model availability and request quotas are subject to OpenRouter and its upstream providers. If the free model is rate-limited or temporarily unavailable, a clear error code is returned.
 
 ---
 

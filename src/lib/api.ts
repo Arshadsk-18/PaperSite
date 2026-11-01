@@ -70,16 +70,29 @@ export async function invokeEdgeFunction<T = any>(
     let message = data.message || data.error || `Error calling ${functionName}`;
 
     // Friendly error mappings
-    if (code === 'GEMINI_NOT_CONFIGURED') {
-      message = 'AI generation is not configured. Please set GEMINI_API_KEY in Supabase secrets.';
-    } else if (code === 'GEMINI_RATE_LIMITED' || response.status === 429) {
-      message = 'AI rate limit reached. Please wait a minute before trying again.';
+    if (code === 'OPENROUTER_NOT_CONFIGURED' || code === 'GEMINI_NOT_CONFIGURED') {
+      message = 'AI generation is not configured. Please set OPENROUTER_API_KEY in Supabase secrets.';
+    } else if (code === 'OPENROUTER_RATE_LIMITED' || code === 'GEMINI_RATE_LIMITED' || response.status === 429) {
+      message = 'The free AI model has reached its current request limit. Please try again later.';
+    } else if (code === 'OPENROUTER_UNAVAILABLE' || code === 'OPENROUTER_TIMEOUT') {
+      message = 'The free AI model is temporarily unavailable. Please try again in a few moments.';
+    } else if (
+      code === 'OPENROUTER_INVALID_RESPONSE' ||
+      code === 'OPENROUTER_INVALID_JSON' ||
+      code === 'AI_OUTPUT_VALIDATION_FAILED' ||
+      code === 'UPDATED_LAYOUT_VALIDATION_FAILED'
+    ) {
+      message = 'The AI returned an invalid design response. Please try again.';
     } else if (code.startsWith('UNAUTHORIZED') || response.status === 401) {
       message = 'Session expired. Please log in again.';
     } else if (code === 'INVALID_LAYOUT') {
       message = 'Generated website structure failed schema validation.';
     } else if (code === 'PROJECT_HAS_NO_SAVED_VERSION') {
-      message = 'Cannot publish: no generated version found for this site.';
+      message = 'Cannot publish: no generated version found for this site. Please generate your website before publishing.';
+    } else if (code === 'PROJECT_NOT_FOUND_OR_UNAUTHORIZED' || response.status === 404) {
+      message = data.message || 'Project not found or you do not have permission to publish it.';
+    } else if (code === 'INVALID_PROJECT_ID') {
+      message = data.message || 'Invalid project identifier.';
     }
 
     throw new ApiError(code, message, response.status, data.details);
@@ -128,7 +141,7 @@ export interface SubmitBookingPayload {
 
 export const api = {
   /**
-   * Convert sketch + voice instruction to layout JSON via Gemini
+   * Convert sketch + voice instruction to layout JSON via OpenRouter
    */
   async sketchToLayout(payload: SketchToLayoutPayload): Promise<{ success: boolean; layout: SiteLayout }> {
     return invokeEdgeFunction<{ success: boolean; layout: SiteLayout }>('sketch-to-layout', payload);

@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Excalidraw } from '@excalidraw/excalidraw';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { useAuth } from '../hooks/useAuth';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { exportSketch, exportUploadedImage } from '../lib/exportSketch';
+import { exportUploadedImage } from '../lib/exportSketch';
 import { api } from '../lib/api';
 import { renderSite } from '../../supabase/functions/_shared/renderSite';
 import { sanitizeHtml } from '../../supabase/functions/_shared/sanitize';
 import type { Project, Version, SupportedLanguage, SiteLayout } from '../types';
+import { BUSINESS_CATEGORIES } from '../lib/businessCategories';
 import {
   Button,
   Pill,
@@ -18,7 +18,8 @@ import {
 import {
   ArrowLeft,
   Sparkles,
-  Upload,
+  UploadCloud,
+  PenTool,
   Mic,
   MicOff,
   History,
@@ -34,11 +35,12 @@ import {
   HelpCircle,
   Zap,
 } from 'lucide-react';
+import { SketchUploader } from '../components/SketchUploader';
+import { DrawingBoard, type DrawingBoardRef } from '../components/DrawingBoard';
 import { hashSketch, getCachedSketchResult, setCachedSketchResult } from '../lib/sketchCache';
-import { buildSamplePage } from '../demo/demoService';
 import { DemoTipsModal } from '../components/DemoTipsModal';
 
-// Sample fallback layout used when Gemini is not configured or in offline demo mode
+// Sample fallback layout used when AI is not configured or in offline demo mode
 const FALLBACK_LAYOUTS: Record<SupportedLanguage, SiteLayout> = {
   en: {
     theme: { primary: '#2F6B4F', font: 'Inter', businessName: 'Our Shop' },
@@ -77,10 +79,26 @@ const FALLBACK_LAYOUTS: Record<SupportedLanguage, SiteLayout> = {
 
 export const EditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const navigate = useNavigate();
 
-  // Excalidraw API Ref
-  const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
+  // Generate URL-safe slug with unique suffix
+  const generateSlug = (name: string): string => {
+    const cleanBase = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'shop';
+    const randSuffix = Math.random().toString(36).substring(2, 6);
+    return `${cleanBase}-${randSuffix}`;
+  };
+
+  // Redesigned Sketch Workspace State: 'upload' vs 'draw'
+  const [sketchMode, setSketchMode] = useState<'upload' | 'draw'>('upload');
+  const [stagedFile, setStagedFile] = useState<File | null>(null);
+  const [stagedPreviewUrl, setStagedPreviewUrl] = useState<string | null>(null);
+  const drawingBoardRef = useRef<DrawingBoardRef>(null);
+  const [_hasDrawnStrokes, setHasDrawnStrokes] = useState(false);
 
   // Project & Version State
   const [project, setProject] = useState<Project | null>(null);
@@ -122,8 +140,6 @@ export const EditorPage: React.FC = () => {
   const [speechSupported, setSpeechSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // Initialize Speech Recognition
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -147,6 +163,17 @@ export const EditorPage: React.FC = () => {
     recognitionRef.current = recognition;
   }, []);
 
+  // Sync staged file object URL for upload preview
+  useEffect(() => {
+    if (stagedFile) {
+      const url = URL.createObjectURL(stagedFile);
+      setStagedPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setStagedPreviewUrl(null);
+    }
+  }, [stagedFile]);
+
   // Listen for section click events from sandboxed preview iframe
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
@@ -160,8 +187,10 @@ export const EditorPage: React.FC = () => {
 
   // Load Project and Versions
   const loadProject = useCallback(async () => {
+    if (isAuthLoading) return;
+
     if (!id || id === 'new') {
-      // Mock new project
+      // Mock new project ready to be customized and persisted
       const mockProject: Project = {
         id: 'new-project',
         owner_id: user?.id || 'demo-owner',
@@ -183,50 +212,20 @@ export const EditorPage: React.FC = () => {
       // Offline fallback
       const stored = localStorage.getItem('papersite_projects');
       const all: Project[] = stored ? JSON.parse(stored) : [];
-      const found = all.find((p) => p.id === id) || {
-        id,
-        owner_id: user?.id || 'demo-owner',
-        business_name: 'Brew Bay Café',
-        business_type: 'cafe',
-        slug: 'brew-bay',
-        whatsapp_number: '+919876543210',
-        language: 'en' as SupportedLanguage,
-        is_published: true,
-        current_version_id: 'v-1',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setProject(found);
-
-      // Check stored versions
-      const storedVers = localStorage.getItem(`papersite_versions_${id}`);
-      if (storedVers) {
-        const parsed: Version[] = JSON.parse(storedVers);
-        setVersions(parsed);
-        if (parsed.length > 0) {
-          const curr = parsed.find((v) => v.id === found.current_version_id) || parsed[0];
-          setCurrentVersion(curr);
-          setCurrentLayout(curr.layout_json as any);
-          setCurrentHtml(curr.html);
+      const found = all.find((p) => p.id === id);
+      if (found) {
+        setProject(found);
+        const storedVers = localStorage.getItem(`papersite_versions_${id}`);
+        if (storedVers) {
+          const parsed: Version[] = JSON.parse(storedVers);
+          setVersions(parsed);
+          if (parsed.length > 0) {
+            const curr = parsed.find((v) => v.id === found.current_version_id) || parsed[0];
+            setCurrentVersion(curr);
+            setCurrentLayout(curr.layout_json as any);
+            setCurrentHtml(curr.html);
+          }
         }
-      } else {
-        // Initial fallback version
-        const fallback = FALLBACK_LAYOUTS[found.language as SupportedLanguage] || FALLBACK_LAYOUTS.en;
-        fallback.theme.businessName = found.business_name;
-        const html = sanitizeHtml(renderSite(fallback, found.language, found.whatsapp_number, { projectId: found.id }));
-        const initVer: Version = {
-          id: 'v-1',
-          project_id: found.id,
-          sketch_url: null,
-          layout_json: fallback as any,
-          html,
-          language: found.language,
-          created_at: new Date().toISOString(),
-        };
-        setVersions([initVer]);
-        setCurrentVersion(initVer);
-        setCurrentLayout(fallback);
-        setCurrentHtml(html);
       }
       return;
     }
@@ -238,7 +237,29 @@ export const EditorPage: React.FC = () => {
         .eq('id', id)
         .single();
 
-      if (projErr || !projData) throw projErr || new Error('Project not found');
+      if (projErr || !projData) {
+        // Check local storage fallback before throwing
+        const stored = localStorage.getItem('papersite_projects');
+        const all: Project[] = stored ? JSON.parse(stored) : [];
+        const found = all.find((p) => p.id === id);
+        if (found) {
+          setProject(found);
+          const storedVers = localStorage.getItem(`papersite_versions_${id}`);
+          if (storedVers) {
+            const parsed: Version[] = JSON.parse(storedVers);
+            setVersions(parsed);
+            if (parsed.length > 0) {
+              const curr = parsed.find((v) => v.id === found.current_version_id) || parsed[0];
+              setCurrentVersion(curr);
+              setCurrentLayout(curr.layout_json as any);
+              setCurrentHtml(curr.html);
+            }
+          }
+          return;
+        }
+        throw projErr || new Error('Project not found');
+      }
+
       setProject(projData);
 
       const { data: verData } = await supabase
@@ -257,7 +278,65 @@ export const EditorPage: React.FC = () => {
     } catch (err: any) {
       setErrorMessage(err.message || 'Error loading project');
     }
-  }, [id, user]);
+  }, [id, user, isAuthLoading]);
+
+  // Ensures that the active project is persisted in Supabase or localStorage with a valid UUID
+  const ensurePersistentProject = useCallback(async (baseProject?: Project | null): Promise<Project | null> => {
+    const target = baseProject || project;
+    if (!target) return null;
+
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const isUnpersisted = !target.id || target.id === 'new-project' || target.id === 'new' || !UUID_REGEX.test(target.id);
+
+    if (!isUnpersisted) {
+      return target;
+    }
+
+    const newSlug = generateSlug(target.business_name || 'My Shop');
+
+    // 1. If Supabase is configured and authenticated user exists, persist to public.projects
+    if (isSupabaseConfigured && supabase && user) {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .insert({
+            owner_id: user.id,
+            business_name: target.business_name || 'My New Shop',
+            business_type: target.business_type || 'cafe',
+            slug: newSlug,
+            whatsapp_number: target.whatsapp_number || '+919876543210',
+            language: target.language || 'en',
+            is_published: false,
+          })
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        setProject(data);
+        navigate(`/editor/${data.id}`, { replace: true });
+        return data;
+      } catch (err: any) {
+        console.warn('Could not insert project row in Supabase, using local persistence:', err.message);
+      }
+    }
+
+    // 2. Offline / local fallback with genuine UUID
+    const localId = crypto.randomUUID ? crypto.randomUUID() : '11111111-1111-1111-1111-111111111111';
+    const persisted: Project = {
+      ...target,
+      id: localId,
+      slug: newSlug,
+      owner_id: user?.id || '00000000-0000-0000-0000-000000000001',
+    };
+    setProject(persisted);
+    try {
+      const stored = JSON.parse(localStorage.getItem('papersite_projects') || '[]');
+      const filtered = stored.filter((p: any) => p.id !== persisted.id && p.id !== 'new-project');
+      localStorage.setItem('papersite_projects', JSON.stringify([persisted, ...filtered]));
+    } catch {}
+    navigate(`/editor/${persisted.id}`, { replace: true });
+    return persisted;
+  }, [project, user, navigate]);
 
   useEffect(() => {
     loadProject();
@@ -282,8 +361,14 @@ export const EditorPage: React.FC = () => {
   };
 
   // Helper to compile layout and save as a version
-  const saveAndRenderVersion = async (layout: SiteLayout, sketchBase64?: string, precompiledHtml?: string) => {
-    if (!project) return;
+  const saveAndRenderVersion = async (
+    layout: SiteLayout,
+    sketchBase64?: string,
+    precompiledHtml?: string,
+    passedProject?: Project | null
+  ) => {
+    const activeProject = passedProject || (await ensurePersistentProject()) || project;
+    if (!activeProject) return;
     setGenerationStep('Writing your site');
 
     let html = precompiledHtml || '';
@@ -293,66 +378,78 @@ export const EditorPage: React.FC = () => {
         try {
           const res = await api.layoutToHtml({
             layoutJson: layout,
-            language: project.language,
-            whatsappNumber: project.whatsapp_number,
-            projectId: project.id,
-            address: project.address,
+            language: activeProject.language,
+            whatsappNumber: activeProject.whatsapp_number,
+            projectId: activeProject.id,
+            address: activeProject.address,
           });
           html = res.html;
         } catch {
-          html = sanitizeHtml(renderSite(layout, project.language, project.whatsapp_number, { projectId: project.id, address: project.address, openingHours: project.opening_hours }));
+          html = sanitizeHtml(renderSite(layout, activeProject.language, activeProject.whatsapp_number, { projectId: activeProject.id, address: activeProject.address, openingHours: activeProject.opening_hours }));
         }
       } else {
-        html = sanitizeHtml(renderSite(layout, project.language, project.whatsapp_number, { projectId: project.id, address: project.address, openingHours: project.opening_hours }));
+        html = sanitizeHtml(renderSite(layout, activeProject.language, activeProject.whatsapp_number, { projectId: activeProject.id, address: activeProject.address, openingHours: activeProject.opening_hours }));
       }
     }
 
-    const newVerId = crypto.randomUUID ? crypto.randomUUID() : `ver-${Date.now()}`;
+    const newVerId = crypto.randomUUID ? crypto.randomUUID() : '22222222-2222-2222-2222-222222222222';
     const newVer: Version = {
       id: newVerId,
-      project_id: project.id,
+      project_id: activeProject.id,
       sketch_url: sketchBase64 ? `data:image/png;base64,${sketchBase64.substring(0, 30)}...` : null,
       layout_json: layout as any,
       html,
-      language: project.language,
+      language: activeProject.language,
       created_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabase && user) {
       try {
-        await supabase.from('versions').insert({
+        const { error: verErr } = await supabase.from('versions').insert({
           id: newVer.id,
-          project_id: project.id,
+          project_id: activeProject.id,
           sketch_url: newVer.sketch_url,
           layout_json: layout,
           html,
-          language: project.language,
+          language: activeProject.language,
         });
-        await supabase.from('projects').update({ current_version_id: newVer.id }).eq('id', project.id);
-      } catch {
+        if (verErr) throw verErr;
+
+        const { error: projErr } = await supabase
+          .from('projects')
+          .update({ current_version_id: newVer.id })
+          .eq('id', activeProject.id);
+        if (projErr) throw projErr;
+      } catch (saveErr: any) {
+        console.warn('Database version persistence warning:', saveErr?.message);
         // Fallback local persistence if network fails mid-way
         const updatedVersions = [newVer, ...versions];
         setVersions(updatedVersions);
-        localStorage.setItem(`papersite_versions_${project.id}`, JSON.stringify(updatedVersions));
+        localStorage.setItem(`papersite_versions_${activeProject.id}`, JSON.stringify(updatedVersions));
       }
     } else {
       const updatedVersions = [newVer, ...versions];
       setVersions(updatedVersions);
-      localStorage.setItem(`papersite_versions_${project.id}`, JSON.stringify(updatedVersions));
+      localStorage.setItem(`papersite_versions_${activeProject.id}`, JSON.stringify(updatedVersions));
       const storedProjs: Project[] = JSON.parse(localStorage.getItem('papersite_projects') || '[]');
-      const updatedProjs = storedProjs.map((p) => (p.id === project.id ? { ...p, current_version_id: newVer.id } : p));
+      const updatedProjs = storedProjs.map((p) => (p.id === activeProject.id ? { ...p, current_version_id: newVer.id } : p));
       localStorage.setItem('papersite_projects', JSON.stringify(updatedProjs));
     }
 
+    // Keep React project state synchronized with current_version_id
+    setProject((prev) => (prev ? { ...prev, current_version_id: newVer.id } : activeProject));
     setVersions((prev) => [newVer, ...prev]);
     setCurrentVersion(newVer);
     setCurrentLayout(layout);
     setCurrentHtml(html);
   };
 
-  // Generate Flow from Canvas
+  // Generate Flow from Canvas / Uploaded Sketch
   const handleGenerate = async (uploadedFile?: File) => {
-    if (!project) return;
+    // 1. Ensure project is persistently identified and tracked
+    const activeProject = await ensurePersistentProject();
+    if (!activeProject) return;
+
     setIsGenerating(true);
     setErrorMessage(null);
     setFallbackReason(null);
@@ -360,25 +457,24 @@ export const EditorPage: React.FC = () => {
 
     try {
       let imageBase64 = '';
-      if (uploadedFile) {
-        imageBase64 = await exportUploadedImage(uploadedFile);
-      } else if (excalidrawAPI) {
-        const elements = excalidrawAPI.getSceneElements();
-        const appState = excalidrawAPI.getAppState();
-        const files = excalidrawAPI.getFiles();
-        imageBase64 = await exportSketch(elements, appState, files);
+      const targetFile = uploadedFile || (sketchMode === 'upload' ? stagedFile : null);
+
+      if (targetFile) {
+        imageBase64 = await exportUploadedImage(targetFile);
+      } else if (drawingBoardRef.current) {
+        imageBase64 = await drawingBoardRef.current.getSketchBase64();
       }
 
-      // 1. Instant Sketch Cache Lookup (0 tokens, instant response)
+      // Instant Sketch Cache Lookup (0 tokens, instant response)
       // Hash is namespaced by business_type so different types never collide
-      const sketchHash = await hashSketch(imageBase64, project.business_type);
+      const sketchHash = await hashSketch(imageBase64, activeProject.business_type);
       const cached = getCachedSketchResult(sketchHash);
       if (cached && cached.isAiGenerated !== false) {
         setCacheNotice('Instant sketch cache hit — 0 tokens used.');
         setTimeout(() => setCacheNotice(null), 4000);
         setUsingSavedExample(false);
         setFallbackReason(null);
-        await saveAndRenderVersion(cached.layout, imageBase64, cached.html);
+        await saveAndRenderVersion(cached.layout, imageBase64, cached.html, activeProject);
         setMobileTab('preview');
         setInstructionText('');
         setIsGenerating(false);
@@ -386,91 +482,55 @@ export const EditorPage: React.FC = () => {
         return;
       }
 
-      // 2. Try Edge Function / AI Vision Generation
-      let layout: SiteLayout | null = null;
-      let html: string = '';
-      let isAiGenerated = false;
-
-      if (isSupabaseConfigured && navigator.onLine) {
-        try {
-          const res = await api.sketchToLayout({
-            imageBase64,
-            businessType: project.business_type,
-            businessName: project.business_name,
-            language: project.language,
-            voiceText: instructionText,
-          });
-          layout = res.layout;
-          isAiGenerated = true;
-
-          try {
-            const htmlRes = await api.layoutToHtml({
-              layoutJson: layout,
-              language: project.language,
-              whatsappNumber: project.whatsapp_number,
-              projectId: project.id,
-              address: project.address,
-            });
-            html = htmlRes.html;
-          } catch {
-            html = sanitizeHtml(renderSite(layout, project.language, project.whatsapp_number, { projectId: project.id, address: project.address, openingHours: project.opening_hours }));
-          }
-
-          setUsingSavedExample(false);
-          setFallbackReason(null);
-        } catch (edgeErr: any) {
-          console.warn('Edge Function or Gemini free-tier error:', edgeErr);
-          layout = null;
-          isAiGenerated = false;
-          if (edgeErr.code === 'GEMINI_RATE_LIMITED' || edgeErr.status === 429) {
-            setFallbackReason('Gemini free-tier quota rate limit reached (HTTP 429). Loaded customized layout.');
-          } else if (edgeErr.code === 'GEMINI_NOT_CONFIGURED') {
-            setFallbackReason('Gemini API key is not configured in Supabase. Loaded customized layout.');
-          } else {
-            setFallbackReason(`AI generation unavailable (${edgeErr.message || 'Network error'}). Loaded customized layout.`);
-          }
-        }
+      // Try Edge Function / AI Vision Generation
+      if (!isSupabaseConfigured || !navigator.onLine) {
+        throw new Error('AI generation is unavailable: network is offline or Supabase environment is unconfigured.');
       }
 
-      // 3. Fallback: If Edge Function failed, rate limited (429), or offline: load category-tailored sample
-      if (!layout) {
-        setUsingSavedExample(true);
-        if (!fallbackReason) {
-          setFallbackReason(navigator.onLine ? 'AI generation service unavailable. Loaded customized layout.' : 'Offline mode active. Loaded customized layout.');
-        }
-        const sample = buildSamplePage({
-          businessName: project.business_name,
-          businessType: project.business_type,
-          language: project.language,
-          whatsappNumber: project.whatsapp_number,
-          projectId: project.id,
-          address: project.address,
+      setGenerationStep('Designing layout from sketch');
+      const res = await api.sketchToLayout({
+        imageBase64,
+        businessType: activeProject.business_type,
+        businessName: activeProject.business_name,
+        language: activeProject.language,
+        voiceText: instructionText,
+      });
+
+      if (!res.success || !res.layout) {
+        throw new Error('AI service returned an invalid design layout.');
+      }
+
+      const layout = res.layout;
+      let html = '';
+
+      try {
+        const htmlRes = await api.layoutToHtml({
+          layoutJson: layout,
+          language: activeProject.language,
+          whatsappNumber: activeProject.whatsapp_number,
+          projectId: activeProject.id,
+          address: activeProject.address,
         });
-        layout = sample.layout;
-        html = sample.html;
+        html = htmlRes.html;
+      } catch {
+        html = sanitizeHtml(renderSite(layout, activeProject.language, activeProject.whatsapp_number, { projectId: activeProject.id, address: activeProject.address, openingHours: activeProject.opening_hours }));
       }
 
-      // 4. Cache and commit version: ONLY cache if genuinely AI generated!
-      if (isAiGenerated && layout) {
-        setCachedSketchResult(sketchHash, layout, html, project.business_type, true);
-      }
-      await saveAndRenderVersion(layout, imageBase64, html);
+      setUsingSavedExample(false);
+      setFallbackReason(null);
+
+      // Cache authentic AI generation
+      setCachedSketchResult(sketchHash, layout, html, activeProject.business_type, true);
+
+      // Commit and save version
+      await saveAndRenderVersion(layout, imageBase64, html, activeProject);
 
       setMobileTab('preview');
       setInstructionText('');
     } catch (err: any) {
-      console.error('Generation error, activating demo safety:', err);
-      setUsingSavedExample(true);
-      setFallbackReason(`Generation error: ${err.message || 'Demo fallback activated'}`);
-      const sample = buildSamplePage({
-        businessName: project.business_name,
-        businessType: project.business_type,
-        language: project.language,
-        whatsappNumber: project.whatsapp_number,
-        projectId: project.id,
-      });
-      await saveAndRenderVersion(sample.layout, '', sample.html);
-      setMobileTab('preview');
+      console.error('AI Generation failed:', err);
+      // Strictly report the clear error to user without substituting fake demo templates!
+      setErrorMessage(err.message || 'AI generation failed. Please check connection and try again.');
     } finally {
       setIsGenerating(false);
       setGenerationStep('');
@@ -552,22 +612,24 @@ export const EditorPage: React.FC = () => {
 
   // Publish / Unpublish Flow
   const handlePublish = async () => {
-    if (!project) return;
+    // 1. Ensure project has a persistent, verified UUID record
+    const activeProject = await ensurePersistentProject();
+    if (!activeProject) return;
     setIsPublishing(true);
     setErrorMessage(null);
 
     try {
-      // 1. Ensure a version exists and is linked
+      // 2. Ensure a generated version exists and is compiled
       if (!currentLayout || !currentHtml) {
         throw new Error('Please generate your website before publishing.');
       }
 
-      if (!project.current_version_id && currentLayout) {
-        // Save current version first
-        await saveAndRenderVersion(currentLayout, '', currentHtml);
+      // 3. Ensure a version is committed in database if current_version_id is missing
+      if (!activeProject.current_version_id) {
+        await saveAndRenderVersion(currentLayout, '', currentHtml, activeProject);
       }
 
-      const slug = project.slug;
+      const slug = activeProject.slug;
       setPublishedSlug(slug);
 
       const siteUrl = `${window.location.origin}/site/${slug}`;
@@ -578,8 +640,13 @@ export const EditorPage: React.FC = () => {
       });
       setQrCodeDataUrl(qrData);
 
-      if (isSupabaseConfigured) {
-        await api.publishSite(project.id);
+      if (isSupabaseConfigured && supabase && user) {
+        await api.publishSite(activeProject.id);
+      } else {
+        // Local persistence fallback
+        const stored = JSON.parse(localStorage.getItem('papersite_projects') || '[]');
+        const updated = stored.map((p: any) => p.id === activeProject.id ? { ...p, is_published: true } : p);
+        localStorage.setItem('papersite_projects', JSON.stringify(updated));
       }
 
       setProject((prev) => (prev ? { ...prev, is_published: true } : null));
@@ -595,8 +662,12 @@ export const EditorPage: React.FC = () => {
     if (!project) return;
     setIsPublishing(true);
     try {
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && supabase && user) {
         await api.unpublishSite(project.id);
+      } else {
+        const stored = JSON.parse(localStorage.getItem('papersite_projects') || '[]');
+        const updated = stored.map((p: any) => p.id === project.id ? { ...p, is_published: false } : p);
+        localStorage.setItem('papersite_projects', JSON.stringify(updated));
       }
       setProject((prev) => (prev ? { ...prev, is_published: false } : null));
       setIsPublishModalOpen(false);
@@ -736,7 +807,25 @@ export const EditorPage: React.FC = () => {
               {project?.business_name || 'Loading...'}
             </h2>
             <div className="flex items-center gap-2 text-xs text-[#5E6B63]">
-              <span className="capitalize">{project?.business_type}</span>
+              <select
+                aria-label="Change business category"
+                data-testid="editor-category-select"
+                value={project?.business_type || 'cafe'}
+                onChange={async (e) => {
+                  const newCat = e.target.value;
+                  setProject((prev) => (prev ? { ...prev, business_type: newCat } : null));
+                  if (project && project.id && project.id !== 'new-project' && isSupabaseConfigured && supabase) {
+                    await supabase.from('projects').update({ business_type: newCat }).eq('id', project.id);
+                  }
+                }}
+                className="bg-transparent font-medium text-[#14221B] border border-[#E3E8E4] rounded px-1.5 py-0.5 text-xs focus:ring-1 focus:ring-[#2F6B4F]"
+              >
+                {BUSINESS_CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
               <span>•</span>
               {project?.is_published ? (
                 <span className="text-[#1F8A4C] font-semibold flex items-center gap-1">
@@ -914,7 +1003,7 @@ export const EditorPage: React.FC = () => {
             mobileTab === 'canvas' ? 'bg-white text-[#1F3D33] shadow-xs' : 'text-[#5E6B63]'
           }`}
         >
-          Canvas Editor
+          Sketch Workspace
         </button>
         <button
           type="button"
@@ -927,53 +1016,108 @@ export const EditorPage: React.FC = () => {
         </button>
       </div>
 
-      {/* 2. SPLIT WORKSPACE: 50% Canvas, 50% Preview */}
+      {/* 2. SPLIT WORKSPACE: 50% Canvas / Sketch, 50% Preview */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 relative">
-        {/* LEFT PANE: Excalidraw Canvas & Upload */}
+        {/* LEFT PANE: Redesigned Sketch Workspace */}
         <div
-          className={`flex-1 flex flex-col min-w-0 border-r border-[#E3E8E4] relative ${
+          className={`flex-1 flex flex-col min-w-0 border-r border-[#E3E8E4] relative bg-[#F4F6F4] ${
             mobileTab === 'canvas' ? 'flex' : 'hidden lg:flex'
           }`}
         >
-          {/* Canvas Sub-bar */}
-          <div className="h-10 px-4 bg-[#F4F6F4] border-b border-[#E3E8E4] flex items-center justify-between text-xs text-[#5E6B63]">
-            <span>Draw boxes & titles for your shop layout</span>
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleGenerate(file);
-                  }
-                  e.target.value = '';
-                }}
-              />
+          {/* Top Bar: 2 Clear Entry Options & Step Indicator */}
+          <div className="h-12 px-3 sm:px-4 bg-white border-b border-[#E3E8E4] flex items-center justify-between text-xs shrink-0 gap-2">
+            {/* Segmented Switcher: Upload a sketch vs Draw a sketch */}
+            <div className="flex items-center gap-1 bg-[#F4F6F4] p-1 rounded-lg border border-[#E3E8E4]">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white border border-[#E3E8E4] text-[#14221B] font-medium hover:bg-gray-50 shadow-2xs cursor-pointer"
+                onClick={() => setSketchMode('upload')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  sketchMode === 'upload'
+                    ? 'bg-white text-[#1F3D33] shadow-xs'
+                    : 'text-[#5E6B63] hover:text-[#14221B]'
+                }`}
               >
-                <Upload className="w-3.5 h-3.5 text-[#2F6B4F]" />
-                <span>Upload photo of your sketch</span>
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>Upload a sketch</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setSketchMode('draw')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  sketchMode === 'draw'
+                    ? 'bg-white text-[#1F3D33] shadow-xs'
+                    : 'text-[#5E6B63] hover:text-[#14221B]'
+                }`}
+              >
+                <PenTool className="w-3.5 h-3.5" />
+                <span>Draw a sketch</span>
+              </button>
+            </div>
+
+            {/* Workflow Step Pill */}
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#5E6B63]">
+              <span className="w-2 h-2 rounded-full bg-[#2F6B4F]"></span>
+              <span className="font-semibold text-[#14221B]">Step 1:</span>
+              <span>{sketchMode === 'upload' ? 'Upload paper photo' : 'Sketch wireframe boxes'}</span>
             </div>
           </div>
 
-          {/* Excalidraw Container */}
-          <div className="flex-1 w-full h-full relative">
-            <Excalidraw
-              excalidrawAPI={(api) => setExcalidrawAPI(api)}
-              initialData={{
-                appState: {
-                  viewBackgroundColor: '#FFFFFF',
-                  currentItemFontFamily: 1,
-                },
-              }}
-            />
+          {/* Active Workspace View: Upload Dropzone vs Native Drawing Board */}
+          <div className="flex-1 flex flex-col min-h-0 relative">
+            {sketchMode === 'upload' ? (
+              <SketchUploader
+                selectedFile={stagedFile}
+                previewUrl={stagedPreviewUrl}
+                onFileSelect={(file) => setStagedFile(file)}
+                disabled={isGenerating}
+              />
+            ) : (
+              <DrawingBoard
+                ref={drawingBoardRef}
+                onStrokeCountChange={setHasDrawnStrokes}
+                disabled={isGenerating}
+              />
+            )}
+          </div>
+
+          {/* Prompt Instructions & Quick Generate Bar at Bottom of Left Pane */}
+          <div className="p-3 bg-white border-t border-[#E3E8E4] shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={instructionText}
+                  onChange={(e) => setInstructionText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleGenerate();
+                  }}
+                  placeholder="Optional voice or text instructions (e.g. 'Add a menu section and WhatsApp button')..."
+                  className="w-full pl-3 pr-9 py-2 text-xs rounded-lg border border-[#E3E8E4] bg-[#F9FAF9] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#2F6B4F]"
+                />
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition-colors cursor-pointer ${
+                    isListening ? 'text-red-500 bg-red-50 animate-pulse' : 'text-[#5E6B63] hover:text-[#14221B]'
+                  }`}
+                  title={isListening ? 'Stop listening' : 'Speak instructions'}
+                >
+                  {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              <Button
+                variant="accent"
+                size="sm"
+                data-testid="left-generate-btn"
+                onClick={() => handleGenerate()}
+                isLoading={isGenerating}
+                icon={<Sparkles className="w-3.5 h-3.5" />}
+                className="font-bold shrink-0 shadow-2xs"
+              >
+                <span>{isGenerating ? generationStep || 'Generating' : 'Generate Website'}</span>
+              </Button>
+            </div>
           </div>
         </div>
 

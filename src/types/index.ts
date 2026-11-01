@@ -106,4 +106,14 @@ export interface PaperSiteLayout {
 
 export type SiteLayout = PaperSiteLayout;
 
+export type StandardBusinessCategoryId =
+  | 'cafe'
+  | 'gym'
+  | 'salon'
+  | 'shop'
+  | 'portfolio'
+  | 'healthcare'
+  | 'education'
+  | 'other';
+
 

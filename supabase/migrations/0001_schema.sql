@@ -17,7 +17,7 @@ create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles(id) on delete cascade,
   business_name text not null,
-  business_type text not null check (business_type in ('cafe', 'salon', 'tutor', 'restaurant', 'shop', 'other')),
+  business_type text not null check (length(trim(business_type)) > 0),
   slug text not null unique check (slug ~ '^[a-z0-9-]+$'),
   whatsapp_number text not null check (whatsapp_number ~ '^\+?[0-9]{7,15}$'),
   language text not null default 'en' check (language in ('en', 'te', 'hi')),

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { resetDemo } from '../demo/demoService';
 import { DemoTipsModal } from '../components/DemoTipsModal';
+import { BUSINESS_CATEGORIES, formatCategoryLabel } from '../lib/businessCategories';
 
 // Demo initial project when running offline without Supabase keys
 const INITIAL_DEMO_PROJECTS: Project[] = [
@@ -59,6 +60,7 @@ export const DashboardPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState<string>('cafe');
+  const [customCategory, setCustomCategory] = useState<string>('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [language, setLanguage] = useState<SupportedLanguage>('en');
   const [formError, setFormError] = useState<string | null>(null);
@@ -196,6 +198,9 @@ export const DashboardPage: React.FC = () => {
 
     setIsSubmitting(true);
     const newSlug = generateSlug(businessName);
+    const finalBusinessType = (businessType === 'other' && customCategory.trim())
+      ? customCategory.trim().toLowerCase()
+      : businessType;
 
     if (!isSupabaseConfigured || !supabase) {
       // Local demo mode
@@ -203,7 +208,7 @@ export const DashboardPage: React.FC = () => {
         id: crypto.randomUUID ? crypto.randomUUID() : `demo-${Date.now()}`,
         owner_id: user?.id || 'demo-owner',
         business_name: businessName.trim(),
-        business_type: businessType,
+        business_type: finalBusinessType,
         slug: newSlug,
         whatsapp_number: phoneValidation.formatted,
         language,
@@ -229,7 +234,7 @@ export const DashboardPage: React.FC = () => {
         .insert({
           owner_id: user?.id,
           business_name: businessName.trim(),
-          business_type: businessType,
+          business_type: finalBusinessType,
           slug: newSlug,
           whatsapp_number: phoneValidation.formatted,
           language,
@@ -437,7 +442,7 @@ export const DashboardPage: React.FC = () => {
                   {/* Metadata Chips: Business Type & Language */}
                   <div className="flex flex-wrap items-center gap-2 mb-4">
                     <Pill variant="surface" size="sm">
-                      {proj.business_type}
+                      {formatCategoryLabel(proj.business_type)}
                     </Pill>
                     <span className="text-xs text-[#5E6B63] flex items-center gap-1">
                       <Globe className="w-3 h-3 text-[#5E6B63]" />
@@ -562,13 +567,32 @@ export const DashboardPage: React.FC = () => {
                   onChange={(e) => setBusinessType(e.target.value)}
                   className="w-full px-3.5 py-2.5 min-h-[44px] text-sm rounded-lg border border-[#E3E8E4] bg-white focus:outline-none focus:ring-2 focus:ring-[#2F6B4F]"
                 >
-                  <option value="cafe">Café & Coffee Shop</option>
-                  <option value="salon">Salon & Spa</option>
-                  <option value="tutor">Tutor & Coaching</option>
-                  <option value="restaurant">Restaurant & Eatery</option>
-                  <option value="shop">Local Retail Shop</option>
-                  <option value="other">Other Service</option>
+                  {BUSINESS_CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.label}
+                    </option>
+                  ))}
                 </select>
+
+                {businessType === 'other' && (
+                  <div className="mt-2.5 animate-in fade-in">
+                    <label
+                      htmlFor="custom-category-input"
+                      className="block text-[11px] font-medium text-[#5E6B63] mb-1"
+                    >
+                      Specify your business category
+                    </label>
+                    <input
+                      id="custom-category-input"
+                      data-testid="custom-category-input"
+                      type="text"
+                      placeholder="e.g. Photography Studio, Pet Grooming, Yoga Center"
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-[#E3E8E4] bg-white focus:outline-none focus:ring-2 focus:ring-[#2F6B4F]"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* WhatsApp Number */}

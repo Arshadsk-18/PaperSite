@@ -169,7 +169,6 @@ export function getCategorySampleLayout(businessType?: string | null, businessNa
           title: 'Salon Hours',
           hours: [
             { day: 'Tuesday - Sunday', open: '09:30', close: '20:30' },
-            { day: 'Monday', open: 'Closed', close: 'Closed' },
           ],
         },
         {
@@ -183,6 +182,264 @@ export function getCategorySampleLayout(businessType?: string | null, businessNa
           type: 'contact',
           title: 'Studio Location',
           content: 'Suite 201, Crystal Plaza, Indiranagar, Bengaluru, Karnataka 560038',
+        },
+        { id: 'footer-1', type: 'footer' },
+      ],
+    };
+  }
+
+  if (type.includes('gym') || type.includes('fitness') || type.includes('workout') || type.includes('crossfit') || type.includes('training')) {
+    return {
+      theme: {
+        primary: '#ea580c',
+        font: 'Montserrat',
+        businessName: name,
+      },
+      sections: [
+        { id: 'header-1', type: 'header' },
+        {
+          id: 'hero-1',
+          type: 'hero',
+          title: name,
+          subtitle: 'Strength Conditioning, Functional Fitness & Personal Coaching',
+          content: 'Transform your health and athletic performance with certified coaches and modern equipment.',
+        },
+        {
+          id: 'services-1',
+          type: 'services',
+          title: 'Training Programs & Memberships',
+          subtitle: 'Flexible membership tiers designed for all fitness levels',
+          items: [
+            { name: '1-on-1 Personal Training Session', description: 'Custom workout plan with dedicated strength coach', price: '₹1,200' },
+            { name: 'Monthly All-Access Gym Pass', description: 'Unlimited access to cardio, free weights & machines', price: '₹2,500' },
+            { name: 'HIIT & Functional Bootcamp', description: 'High-energy small group conditioning batch', price: '₹1,800' },
+            { name: 'Nutrition & Body Composition Review', description: 'Personalized macros assessment and diet guide', price: '₹950' },
+          ],
+        },
+        {
+          id: 'hours-1',
+          type: 'hours',
+          title: 'Facility Hours',
+          hours: [
+            { day: 'Monday - Saturday', open: '06:00', close: '22:00' },
+            { day: 'Sunday', open: '07:00', close: '14:00' },
+          ],
+        },
+        {
+          id: 'booking-1',
+          type: 'booking',
+          title: 'Book a Free Trial Session',
+          subtitle: 'Claim your complimentary 1-day pass and fitness assessment. Confirm via WhatsApp.',
+        },
+        {
+          id: 'contact-1',
+          type: 'contact',
+          title: 'Gym Location',
+          content: '3rd Floor, Velocity Tower, Outer Ring Road, Bengaluru, Karnataka 560103',
+        },
+        { id: 'footer-1', type: 'footer' },
+      ],
+    };
+  }
+
+  if (type.includes('health') || type.includes('clinic') || type.includes('doctor') || type.includes('dental') || type.includes('medic') || type.includes('wellness')) {
+    return {
+      theme: {
+        primary: '#0284c7',
+        font: 'Roboto',
+        businessName: name,
+      },
+      sections: [
+        { id: 'header-1', type: 'header' },
+        {
+          id: 'hero-1',
+          type: 'hero',
+          title: name,
+          subtitle: 'Comprehensive Family Healthcare, Diagnostics & Preventive Medicine',
+          content: 'Dedicated to compassionate, patient-centered clinical care with modern diagnostic facilities.',
+        },
+        {
+          id: 'services-1',
+          type: 'services',
+          title: 'Medical Services & Specialities',
+          subtitle: 'Consultations and preventive health checkups by experienced physicians',
+          items: [
+            { name: 'General Physician Consultation', description: 'Primary health evaluation and clinical diagnosis', price: '₹600' },
+            { name: 'Complete Executive Health Checkup', description: 'Full metabolic blood panel, ECG & vitals screen', price: '₹2,200' },
+            { name: 'Preventive Dental Assessment', description: 'Comprehensive oral examination and scaling', price: '₹800' },
+            { name: 'Pediatric Care & Vaccination Review', description: 'Child developmental monitoring and immunization', price: '₹750' },
+          ],
+        },
+        {
+          id: 'hours-1',
+          type: 'hours',
+          title: 'Clinic Timings',
+          hours: [
+            { day: 'Monday - Friday', open: '08:30', close: '20:00' },
+            { day: 'Saturday', open: '09:00', close: '17:00' },
+            { day: 'Sunday', open: '09:00', close: '13:00' },
+          ],
+        },
+        {
+          id: 'booking-1',
+          type: 'booking',
+          title: 'Book Doctor Consultation',
+          subtitle: 'Schedule an in-person or video consultation. Confirmed directly via WhatsApp.',
+        },
+        {
+          id: 'contact-1',
+          type: 'contact',
+          title: 'Clinic Location',
+          content: 'Plot 7A, Green View Avenue, Koramangala, Bengaluru, Karnataka 560034',
+        },
+        { id: 'footer-1', type: 'footer' },
+      ],
+    };
+  }
+
+  if (type.includes('port') || type.includes('design') || type.includes('photo') || type.includes('creative')) {
+    return {
+      theme: {
+        primary: '#0f766e',
+        font: 'Poppins',
+        businessName: name,
+      },
+      sections: [
+        { id: 'header-1', type: 'header' },
+        {
+          id: 'hero-1',
+          type: 'hero',
+          title: name,
+          subtitle: 'Brand Strategy, Digital Product Design & Creative Direction',
+          content: 'Crafting thoughtful digital experiences, identities, and bespoke visual systems for ambitious brands.',
+        },
+        {
+          id: 'about-1',
+          type: 'about',
+          title: 'About the Studio',
+          content: 'Over eight years collaborating with high-growth companies to create meaningful, enduring brand equity through design.',
+        },
+        {
+          id: 'services-1',
+          type: 'services',
+          title: 'Core Creative Capabilities',
+          subtitle: 'Selected disciplines and design consulting packages',
+          items: [
+            { name: 'Brand Identity & Visual System', description: 'Logomark, typography, color palette & guidelines', price: 'Custom' },
+            { name: 'Web & Product UI/UX Design', description: 'High-converting interactive digital experiences', price: 'Custom' },
+            { name: 'Design Sprint & Consultation', description: '3-day rapid discovery and product prototyping', price: '₹18,000' },
+          ],
+        },
+        {
+          id: 'booking-1',
+          type: 'booking',
+          title: 'Book a Discovery Call',
+          subtitle: 'Schedule a 30-minute introductory call to explore project fit and timeline.',
+        },
+        {
+          id: 'contact-1',
+          type: 'contact',
+          title: 'Connect & Inquire',
+          content: 'Available for select worldwide freelance and agency engagements.',
+        },
+        { id: 'footer-1', type: 'footer' },
+      ],
+    };
+  }
+
+  if (type.includes('edu') || type.includes('tutor') || type.includes('school') || type.includes('academy') || type.includes('coach')) {
+    return {
+      theme: {
+        primary: '#7c3aed',
+        font: 'Open Sans',
+        businessName: name,
+      },
+      sections: [
+        { id: 'header-1', type: 'header' },
+        {
+          id: 'hero-1',
+          type: 'hero',
+          title: name,
+          subtitle: 'Concept-Driven Coaching, Academic Excellence & Test Prep',
+          content: 'Empowering students to achieve peak potential through structured pedagogy and personal mentorship.',
+        },
+        {
+          id: 'services-1',
+          type: 'services',
+          title: 'Academic Batches & Subjects',
+          subtitle: 'Interactive small-batch learning with doubt-clearing sessions',
+          items: [
+            { name: 'Foundation Mathematics & Physics', description: 'Grades 9-10 conceptual building and problem sets', price: '₹3,000/mo' },
+            { name: 'Advanced Competitive Entrance Prep', description: 'Intensive mock testing and speed optimization', price: '₹4,500/mo' },
+            { name: '1-on-1 Personalized Mentoring', description: 'Custom-paced academic review and exam strategy', price: '₹900/hr' },
+          ],
+        },
+        {
+          id: 'hours-1',
+          type: 'hours',
+          title: 'Batch Schedule',
+          hours: [
+            { day: 'Monday - Friday (Batches)', open: '15:00', close: '20:30' },
+            { day: 'Saturday (Doubt Clearing)', open: '10:00', close: '16:00' },
+          ],
+        },
+        {
+          id: 'booking-1',
+          type: 'booking',
+          title: 'Register for Free Demo Class',
+          subtitle: 'Reserve a seat in our upcoming demo lecture. WhatsApp notification sent immediately.',
+        },
+        {
+          id: 'contact-1',
+          type: 'contact',
+          title: 'Campus Center',
+          content: '2nd Floor, Vidya Bhavan, Near City Library, Pune, Maharashtra 411004',
+        },
+        { id: 'footer-1', type: 'footer' },
+      ],
+    };
+  }
+
+  // Universal adaptive layout for any custom category (preserves domain context)
+  if (type !== 'cafe' && type !== 'coffee' && type !== 'default') {
+    const formattedCategory = type.charAt(0).toUpperCase() + type.slice(1);
+    return {
+      theme: {
+        primary: '#1F3D33',
+        font: 'Inter',
+        businessName: name,
+      },
+      sections: [
+        { id: 'header-1', type: 'header' },
+        {
+          id: 'hero-1',
+          type: 'hero',
+          title: name,
+          subtitle: `Professional ${formattedCategory} Services & Quality Craftsmanship`,
+          content: `Delivering outstanding ${formattedCategory.toLowerCase()} solutions tailored to your unique requirements.`,
+        },
+        {
+          id: 'services-1',
+          type: 'services',
+          title: 'Our Featured Services',
+          subtitle: `Reliable ${formattedCategory.toLowerCase()} offerings and consultations`,
+          items: [
+            { name: `Standard ${formattedCategory} Consultation`, description: 'Comprehensive initial evaluation and custom quote', price: '₹500' },
+            { name: `Premium ${formattedCategory} Service Package`, description: 'Complete end-to-end execution with satisfaction guarantee', price: '₹2,500' },
+            { name: 'Express Priority Service', description: 'Expedited turnaround with dedicated support', price: '₹1,200' },
+          ],
+        },
+        {
+          id: 'booking-1',
+          type: 'booking',
+          title: 'Book an Appointment',
+          subtitle: 'Reserve your time slot online. We confirm immediately via WhatsApp.',
+        },
+        {
+          id: 'contact-1',
+          type: 'contact',
+          title: 'Get In Touch',
+          content: 'Contact us directly on WhatsApp or phone for immediate inquiries.',
         },
         { id: 'footer-1', type: 'footer' },
       ],

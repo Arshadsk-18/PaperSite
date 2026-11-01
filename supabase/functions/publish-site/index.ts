@@ -17,7 +17,21 @@ Deno.serve(async (req) => {
     const { projectId } = body;
 
     if (!projectId) {
-      return new Response(JSON.stringify({ error: 'projectId is required' }), {
+      return new Response(JSON.stringify({
+        error: 'INVALID_PROJECT_ID',
+        message: 'projectId is required'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!UUID_REGEX.test(projectId)) {
+      return new Response(JSON.stringify({
+        error: 'INVALID_PROJECT_ID',
+        message: `Invalid project ID format "${projectId}". Must be a valid UUID.`
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -32,14 +46,20 @@ Deno.serve(async (req) => {
       .single();
 
     if (projErr || !project) {
-      return new Response(JSON.stringify({ error: 'PROJECT_NOT_FOUND_OR_UNAUTHORIZED' }), {
+      return new Response(JSON.stringify({
+        error: 'PROJECT_NOT_FOUND_OR_UNAUTHORIZED',
+        message: `Project "${projectId}" not found or unauthorized for authenticated user.`
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (!project.current_version_id) {
-      return new Response(JSON.stringify({ error: 'PROJECT_HAS_NO_SAVED_VERSION' }), {
+      return new Response(JSON.stringify({
+        error: 'PROJECT_HAS_NO_SAVED_VERSION',
+        message: `Project "${projectId}" has no saved version to publish.`
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -53,7 +73,10 @@ Deno.serve(async (req) => {
       .single();
 
     if (verErr || !version || !version.html) {
-      return new Response(JSON.stringify({ error: 'VERSION_HTML_NOT_FOUND' }), {
+      return new Response(JSON.stringify({
+        error: 'VERSION_HTML_NOT_FOUND',
+        message: `Version HTML for current version "${project.current_version_id}" could not be found.`
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

@@ -6,7 +6,7 @@
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/auth.ts';
-import { askGeminiJson } from '../_shared/geminiJson.ts';
+import { askOpenRouterJson } from '../_shared/openrouterJson.ts';
 import { validateLayout, APPROVED_FONTS } from '../_shared/schema.ts';
 
 const MAX_BASE64_LENGTH = 10 * 1024 * 1024; // 10MB limit
@@ -40,19 +40,31 @@ Deno.serve(async (req) => {
     const prompt = `You are an expert web designer assisting local small businesses.
 Analyze this layout sketch (if provided) and user instructions to create a structured website layout for:
 - Business Name: "${businessName}"
-- Business Type: "${businessType}" (e.g. cafe, salon, tutor, restaurant, shop)
+- Business Category / Type: "${businessType}" (supports: gym, cafe, restaurant, salon, shop, portfolio, healthcare, education, or any custom business category)
 - Language: ${langName} (${language})
 ${voiceText ? `- Additional spoken/text instructions: "${voiceText}"` : ''}
+
+PRIMARY DESIGN PRINCIPLES:
+1. SKETCH IS THE PRIMARY STRUCTURAL BLUEPRINT: Carefully inspect the uploaded sketch image. Detect the drawn wireframe sections, order, text boxes, and component cards. The returned layout MUST follow the structural arrangement and section sequence seen in the drawing.
+2. CATEGORY CONTEXT GUIDANCE: The business category ("${businessType}") guides the realistic titles, descriptions, offerings, and color theme:
+   - Gym / Fitness: Personal training, workout programs, memberships, trial pass booking, facility hours.
+   - Café / Restaurant: Signature dishes, brews, tasting menus in "menu", table reservations, dining hours.
+   - Salon / Beauty: Hair, skincare rituals, spa treatments in "services", stylist appointment booking, salon hours.
+   - Retail / Shop: Curated catalog, product highlights in "services", trial/pickup booking, store hours.
+   - Portfolio: Creative disciplines, about the artist/studio, discovery consultation booking.
+   - Healthcare / Clinic: Medical consultations, preventive checkup packages, doctor appointment booking, clinic timings.
+   - Education: Academic batches, tutoring subjects, faculty guidance, demo class registration, class hours.
+   - Other / Custom Category: Tailor offerings, copy, and booking options directly to the provided business details.
 
 CRITICAL RULES:
 1. Return STRICT JSON only matching this layout schema.
 2. The AI returns JSON content only. Never return HTML tags or markdown formatting.
-3. Write realistic, compelling titles, subtitles, and descriptions tailored to this specific business type in ${langName}. DO NOT use any "lorem ipsum".
+3. Write realistic, compelling titles, subtitles, and descriptions tailored to this specific business category in ${langName}. DO NOT use any "lorem ipsum".
 4. Section types must be chosen from: ["header", "hero", "menu", "services", "about", "contact", "booking", "hours", "footer"].
-5. Theme primary color must be a vibrant, beautiful hex code (e.g. "#d97706" for cafe, "#0284c7" for services, "#db2777" for salon).
+5. Theme primary color must be a vibrant, beautiful hex code (e.g. "#ea580c" for gym, "#b45309" for cafe, "#0284c7" for healthcare, "#db2777" for salon, "#4338ca" for retail, "#0f766e" for portfolio, "#7c3aed" for education).
 6. Theme font must be chosen from: ${JSON.stringify(APPROVED_FONTS)}.
 7. All section IDs must be unique strings (e.g. "header-1", "hero-1", "services-1", "booking-1", "contact-1").
-8. Always include a "booking" section and a "contact" section. If it is a cafe or restaurant, include a "menu" section. If a salon or tutor, include "services".
+8. Always include a "booking" section and a "contact" section. If it is a dining/food business, include a "menu" section. For gyms, salons, clinics, shops, tutors, portfolios, and service businesses, include a "services" section.
 
 Output JSON format:
 {
@@ -91,10 +103,9 @@ Output JSON format:
   ]
 }`;
 
-    const layout = await askGeminiJson({
+    const layout = await askOpenRouterJson({
       prompt,
       imageBase64,
-      model: body.model,
     });
 
     const validation = validateLayout(layout);
@@ -113,13 +124,34 @@ Output JSON format:
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
-    const isConfigError = err.message === 'GEMINI_NOT_CONFIGURED';
-    const isRateLimit = err.message === 'GEMINI_RATE_LIMITED';
-    const status = isConfigError ? 503 : isRateLimit ? 429 : err.message?.startsWith('UNAUTHORIZED') ? 401 : 500;
+    const isConfigError = err.message === 'OPENROUTER_NOT_CONFIGURED';
+    const isRateLimit = err.message === 'OPENROUTER_RATE_LIMITED';
+    const isUnavailable = err.message === 'OPENROUTER_UNAVAILABLE' ||
+                          err.message === 'OPENROUTER_TIMEOUT' ||
+                          err.message?.startsWith('OPENROUTER_UNAVAILABLE');
+    const isInvalidOutput = err.message === 'OPENROUTER_INVALID_JSON' || err.message?.startsWith('OPENROUTER_INVALID_RESPONSE');
 
-    return new Response(JSON.stringify({ 
-      error: isConfigError ? 'GEMINI_NOT_CONFIGURED' : isRateLimit ? 'GEMINI_RATE_LIMITED' : err.message 
-    }), {
+    let status = 500;
+    if (isConfigError) status = 503;
+    else if (isRateLimit) status = 429;
+    else if (isUnavailable) status = 503;
+    else if (isInvalidOutput) status = 422;
+    else if (err.message?.startsWith('UNAUTHORIZED')) status = 401;
+
+    const errorCode = isConfigError ? 'OPENROUTER_NOT_CONFIGURED' :
+                      isRateLimit ? 'OPENROUTER_RATE_LIMITED' :
+                      isUnavailable ? 'OPENROUTER_UNAVAILABLE' :
+                      isInvalidOutput ? 'OPENROUTER_INVALID_RESPONSE' :
+                      err.message;
+
+    console.error(JSON.stringify({
+      event: 'sketch_to_layout_failure',
+      errorCode,
+      httpStatus: status,
+      rawErrorMessage: err.message?.slice(0, 150),
+    }));
+
+    return new Response(JSON.stringify({ error: errorCode }), {
       status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

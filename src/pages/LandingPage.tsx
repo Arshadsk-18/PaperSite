@@ -335,7 +335,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <h4 className="text-lg font-bold text-[#14221B] mb-2">Say what you want</h4>
             <p className="text-sm text-[#5E6B63] leading-relaxed">
-              Tap the microphone and describe your business in English, Telugu, or Hindi. Gemini writes authentic copy.
+              Tap the microphone and describe your business in English, Telugu, or Hindi. AI writes authentic copy.
             </p>
           </motion.div>
 

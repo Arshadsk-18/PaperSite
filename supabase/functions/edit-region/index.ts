@@ -6,7 +6,7 @@
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/auth.ts';
-import { askGeminiJson } from '../_shared/geminiJson.ts';
+import { askOpenRouterJson } from '../_shared/openrouterJson.ts';
 import { validateLayout } from '../_shared/schema.ts';
 
 Deno.serve(async (req) => {
@@ -57,7 +57,7 @@ Current Layout JSON:
 ${JSON.stringify(currentLayoutJson, null, 2)}`;
     }
 
-    const updatedLayout = await askGeminiJson({ prompt, model: body.model });
+    const updatedLayout = await askOpenRouterJson({ prompt });
 
     const validation = validateLayout(updatedLayout);
     if (!validation.valid) {
@@ -75,13 +75,34 @@ ${JSON.stringify(currentLayoutJson, null, 2)}`;
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
-    const isConfigError = err.message === 'GEMINI_NOT_CONFIGURED';
-    const isRateLimit = err.message === 'GEMINI_RATE_LIMITED';
-    const status = isConfigError ? 503 : isRateLimit ? 429 : err.message?.startsWith('UNAUTHORIZED') ? 401 : 500;
+    const isConfigError = err.message === 'OPENROUTER_NOT_CONFIGURED';
+    const isRateLimit = err.message === 'OPENROUTER_RATE_LIMITED';
+    const isUnavailable = err.message === 'OPENROUTER_UNAVAILABLE' ||
+                          err.message === 'OPENROUTER_TIMEOUT' ||
+                          err.message?.startsWith('OPENROUTER_UNAVAILABLE');
+    const isInvalidOutput = err.message === 'OPENROUTER_INVALID_JSON' || err.message?.startsWith('OPENROUTER_INVALID_RESPONSE');
 
-    return new Response(JSON.stringify({ 
-      error: isConfigError ? 'GEMINI_NOT_CONFIGURED' : isRateLimit ? 'GEMINI_RATE_LIMITED' : err.message 
-    }), {
+    let status = 500;
+    if (isConfigError) status = 503;
+    else if (isRateLimit) status = 429;
+    else if (isUnavailable) status = 503;
+    else if (isInvalidOutput) status = 422;
+    else if (err.message?.startsWith('UNAUTHORIZED')) status = 401;
+
+    const errorCode = isConfigError ? 'OPENROUTER_NOT_CONFIGURED' :
+                      isRateLimit ? 'OPENROUTER_RATE_LIMITED' :
+                      isUnavailable ? 'OPENROUTER_UNAVAILABLE' :
+                      isInvalidOutput ? 'OPENROUTER_INVALID_RESPONSE' :
+                      err.message;
+
+    console.error(JSON.stringify({
+      event: 'edit_region_failure',
+      errorCode,
+      httpStatus: status,
+      rawErrorMessage: err.message?.slice(0, 150),
+    }));
+
+    return new Response(JSON.stringify({ error: errorCode }), {
       status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
