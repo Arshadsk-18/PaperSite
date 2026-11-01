@@ -93,6 +93,10 @@ export async function invokeEdgeFunction<T = any>(
       message = data.message || 'Project not found or you do not have permission to publish it.';
     } else if (code === 'INVALID_PROJECT_ID') {
       message = data.message || 'Invalid project identifier.';
+    } else if (code === 'PAYLOAD_TOO_LARGE' || response.status === 413) {
+      message = data.message || 'Uploaded sketch is too large. Please use a sketch image under 2MB.';
+    } else if (code === 'WORKER_RESOURCE_LIMIT' || response.status === 546) {
+      message = 'The server ran out of resources processing this sketch. Please use a smaller sketch image.';
     }
 
     throw new ApiError(code, message, response.status, data.details);

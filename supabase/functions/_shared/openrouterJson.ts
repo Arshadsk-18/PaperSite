@@ -50,15 +50,106 @@ export function extractAndParseJson<T = any>(text: string): T {
 
 /**
  * Sanitizes diagnostic log messages to prevent any keys, tokens, or image payloads
- * from being written to server logs.
+ * from being written to server logs. Bounded to 500 chars to avoid CPU spikes or ReDoS.
  */
-function sanitizeLogMessage(msg: string): string {
+export function sanitizeLogMessage(msg: string): string {
   if (!msg) return '';
-  return msg
+  const bounded = msg.length > 500 ? `${msg.slice(0, 500)}...[TRUNCATED]` : msg;
+  return bounded
     .replace(/bearer\s+[a-zA-Z0-9_.-]+/gi, 'Bearer [REDACTED]')
     .replace(/sk-or-[a-zA-Z0-9_-]+/gi, '[REDACTED_API_KEY]')
     .replace(/key=[a-zA-Z0-9_-]+/gi, 'key=[REDACTED]')
-    .replace(/data:image\/[a-zA-Z0-9+.-]+;base64,[a-zA-Z0-9+/=]+/gi, '[IMAGE_DATA_REDACTED]');
+    .replace(/data:image\/[^;]+;base64,[a-zA-Z0-9+/=]+/gi, '[IMAGE_DATA_REDACTED]');
+}
+
+/**
+ * Supported image MIME types for multimodal vision models.
+ */
+export const SUPPORTED_IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+] as const;
+
+export type SupportedImageMimeType = typeof SUPPORTED_IMAGE_MIME_TYPES[number];
+
+/**
+ * Validates and normalizes an image payload (either full data URI or raw base64)
+ * into a valid data URI matching the actual image MIME type.
+ *
+ * Supported formats:
+ * - JPEG: magic bytes `FF D8 FF` -> base64 starts with `/9j`
+ * - PNG:  magic bytes `89 50 4E 47` -> base64 starts with `iVBOR`
+ * - WebP: magic bytes `52 49 46 46` -> base64 starts with `UklGR`
+ * - GIF:  magic bytes `47 49 46 38` -> base64 starts with `R0lGOD`
+ */
+export function resolveImageDataUri(rawInput: string): string {
+  if (!rawInput || typeof rawInput !== 'string') {
+    throw new Error('OPENROUTER_INVALID_RESPONSE: Invalid or empty image payload');
+  }
+
+  const raw = rawInput.trim();
+  if (!raw) {
+    throw new Error('OPENROUTER_INVALID_RESPONSE: Invalid or empty image payload');
+  }
+
+  // 1. Check if input is already a data URI: data:[<mediatype>][;base64],<data>
+  if (raw.startsWith('data:')) {
+    const commaIndex = raw.indexOf(',');
+    if (commaIndex === -1) {
+      throw new Error('OPENROUTER_INVALID_RESPONSE: Malformed data URI image payload (missing comma)');
+    }
+
+    const header = raw.substring(0, commaIndex).toLowerCase();
+    const base64Data = raw.substring(commaIndex + 1).trim();
+
+    if (!base64Data) {
+      throw new Error('OPENROUTER_INVALID_RESPONSE: Empty base64 image data in data URI');
+    }
+
+    // Extract MIME type from header (e.g. "data:image/jpeg;base64" -> "image/jpeg")
+    const match = header.match(/^data:([^;]+)(?:;charset=[^;]+)?;base64$/);
+    if (!match) {
+      throw new Error('OPENROUTER_INVALID_RESPONSE: Malformed data URI scheme or non-base64 encoding');
+    }
+
+    let mimeType = match[1].trim();
+    // Normalize aliases (e.g. image/jpg -> image/jpeg)
+    if (mimeType === 'image/jpg') {
+      mimeType = 'image/jpeg';
+    }
+
+    if (!SUPPORTED_IMAGE_MIME_TYPES.includes(mimeType as SupportedImageMimeType)) {
+      throw new Error(
+        `OPENROUTER_INVALID_RESPONSE: Unsupported image MIME type "${mimeType}". Supported: ${SUPPORTED_IMAGE_MIME_TYPES.join(', ')}`
+      );
+    }
+
+    // If normalized alias or already correct, return normalized data URI
+    return mimeType === match[1] ? raw : `data:${mimeType};base64,${base64Data}`;
+  }
+
+  // 2. Backward compatibility for callers passing raw base64 (without data: prefix)
+  // Determine actual image MIME type from binary magic bytes encoded in Base64
+  let detectedMime: SupportedImageMimeType | null = null;
+  if (raw.startsWith('/9j')) {
+    detectedMime = 'image/jpeg';
+  } else if (raw.startsWith('iVBOR')) {
+    detectedMime = 'image/png';
+  } else if (raw.startsWith('UklGR')) {
+    detectedMime = 'image/webp';
+  } else if (raw.startsWith('R0lGOD')) {
+    detectedMime = 'image/gif';
+  }
+
+  if (!detectedMime) {
+    throw new Error(
+      'OPENROUTER_INVALID_RESPONSE: Unsupported or invalid image format. Expected valid JPEG, PNG, WebP, or GIF image data.'
+    );
+  }
+
+  return `data:${detectedMime};base64,${raw}`;
 }
 
 /**
@@ -82,26 +173,12 @@ export async function askOpenRouterJson<T = any>(req: OpenRouterRequest): Promis
 
   // Handle uploaded image if present
   if (req.imageBase64) {
-    let cleanBase64 = req.imageBase64.trim();
-    let mimeType = 'image/png';
+    const imageUrl = resolveImageDataUri(req.imageBase64);
 
-    if (cleanBase64.startsWith('data:')) {
-      const match = cleanBase64.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,/);
-      if (match) {
-        mimeType = match[1];
-        cleanBase64 = cleanBase64.substring(match[0].length);
-      }
-    }
-
-    if (!cleanBase64) {
-      throw new Error('OPENROUTER_INVALID_RESPONSE: Invalid or empty image payload');
-    }
-
-    // Format as standard data URI for vision models
     userContent.push({
       type: 'image_url',
       image_url: {
-        url: `data:${mimeType};base64,${cleanBase64}`,
+        url: imageUrl,
       },
     });
   }

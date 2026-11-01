@@ -294,7 +294,7 @@ export const DrawingBoard = forwardRef<DrawingBoardRef, DrawingBoardProps>(
         }
 
         const dataUrl = offscreen.toDataURL('image/png');
-        resolve(dataUrl.split(',')[1]); // Strip data URI prefix
+        resolve(dataUrl); // Return full data URI preserving image/png MIME type
       });
     };
 

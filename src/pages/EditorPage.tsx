@@ -363,7 +363,7 @@ export const EditorPage: React.FC = () => {
   // Helper to compile layout and save as a version
   const saveAndRenderVersion = async (
     layout: SiteLayout,
-    sketchBase64?: string,
+    _sketchBase64?: string,
     precompiledHtml?: string,
     passedProject?: Project | null
   ) => {
@@ -396,7 +396,7 @@ export const EditorPage: React.FC = () => {
     const newVer: Version = {
       id: newVerId,
       project_id: activeProject.id,
-      sketch_url: sketchBase64 ? `data:image/png;base64,${sketchBase64.substring(0, 30)}...` : null,
+      sketch_url: null,
       layout_json: layout as any,
       html,
       language: activeProject.language,

@@ -8,8 +8,12 @@ import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/auth.ts';
 import { askOpenRouterJson } from '../_shared/openrouterJson.ts';
 import { validateLayout, APPROVED_FONTS } from '../_shared/schema.ts';
-
-const MAX_BASE64_LENGTH = 10 * 1024 * 1024; // 10MB limit
+import {
+  readJsonWithLimit,
+  PayloadTooLargeError,
+  MAX_REQUEST_BODY_BYTES,
+  MAX_BASE64_LENGTH,
+} from '../_shared/requestLimit.ts';
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
@@ -18,7 +22,7 @@ Deno.serve(async (req) => {
   try {
     await requireUser(req);
 
-    const body = await req.json();
+    const body = await readJsonWithLimit(req, MAX_REQUEST_BODY_BYTES);
     const { imageBase64, businessType, businessName, language = 'en', voiceText } = body;
 
     if (!businessType || !businessName) {
@@ -29,7 +33,10 @@ Deno.serve(async (req) => {
     }
 
     if (imageBase64 && imageBase64.length > MAX_BASE64_LENGTH) {
-      return new Response(JSON.stringify({ error: 'Image file size exceeds the 10MB limit' }), {
+      return new Response(JSON.stringify({
+        error: 'PAYLOAD_TOO_LARGE',
+        message: 'Image data exceeds the 2MB limit. Please upload a compressed sketch.'
+      }), {
         status: 413,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -124,6 +131,26 @@ Output JSON format:
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
+    if (err instanceof PayloadTooLargeError || err.name === 'PayloadTooLargeError') {
+      return new Response(JSON.stringify({
+        error: 'PAYLOAD_TOO_LARGE',
+        message: 'Request payload exceeds the 2.5MB limit. Please upload a smaller sketch.'
+      }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (err instanceof SyntaxError) {
+      return new Response(JSON.stringify({
+        error: 'INVALID_JSON_BODY',
+        message: 'Malformed JSON payload in request body'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const isConfigError = err.message === 'OPENROUTER_NOT_CONFIGURED';
     const isRateLimit = err.message === 'OPENROUTER_RATE_LIMITED';
     const isUnavailable = err.message === 'OPENROUTER_UNAVAILABLE' ||
